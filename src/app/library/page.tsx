@@ -220,22 +220,24 @@ export default function LibraryPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                 <Button
                   variant={viewMode === 'grid' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setViewMode('grid')}
-                  className="w-9 h-9 p-0"
+                  className="w-9 h-9 p-0 sm:w-auto sm:px-3"
                 >
                   <Grid3X3 className="w-4 h-4" />
+                  <span className="hidden sm:inline ml-2">Grid</span>
                 </Button>
                 <Button
                   variant={viewMode === 'list' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setViewMode('list')}
-                  className="w-9 h-9 p-0"
+                  className="w-9 h-9 p-0 sm:w-auto sm:px-3"
                 >
                   <List className="w-4 h-4" />
+                  <span className="hidden sm:inline ml-2">Lista</span>
                 </Button>
               </div>
             </div>
@@ -265,7 +267,7 @@ export default function LibraryPage() {
             </CardContent>
           </Card>
         ) : viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             {filteredVideos.map((video) => (
               <Card
                 key={video.id}
