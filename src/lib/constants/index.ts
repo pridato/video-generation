@@ -58,6 +58,9 @@ export const ROUTES = {
     CALLBACK: '/auth/callback'
   },
   DASHBOARD: '/dashboard',
+  CREATE: '/create',
+  LIBRARY: '/library',
+  SETTINGS: '/settings',
   PRICING: '/pricing',
   PROFILE: '/profile',
   ADMIN: '/admin'

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { ROUTES } from '@/lib/constants'
@@ -9,41 +9,38 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { Github, Chrome, Play, LogIn, AlertCircle } from 'lucide-react'
+import { Github, Chrome, Play, Sparkles } from 'lucide-react'
 
-export default function LoginPage() {
+export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [fullName, setFullName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
   
   const router = useRouter()
-  const searchParams = useSearchParams()
   const supabase = createClient()
 
-  useEffect(() => {
-    const messageParam = searchParams.get('message')
-    if (messageParam) {
-      setMessage(messageParam)
-    }
-  }, [searchParams])
-
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          full_name: fullName,
+        },
+      },
     })
 
     if (error) {
       setError(error.message)
       setLoading(false)
     } else {
-      router.push(ROUTES.DASHBOARD)
+      router.push(ROUTES.AUTH.LOGIN + '?message=Check your email to confirm your account')
     }
   }
 
@@ -73,29 +70,21 @@ export default function LoginPage() {
             <Play className="w-8 h-8 text-white" fill="currentColor" />
           </div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            Welcome Back
+            YouTube Shorts Generator
           </h1>
           <p className="text-muted-foreground mt-2">
-            Continue creating viral shorts with AI
+            Create viral shorts with AI in minutes
           </p>
         </div>
 
         <Card className="card-glow border-border">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center">Sign In</CardTitle>
+            <CardTitle className="text-2xl font-bold text-center">Create Account</CardTitle>
             <CardDescription className="text-center">
-              Access your video generation dashboard
+              Join thousands of creators making viral content with AI
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Messages */}
-            {message && (
-              <div className="bg-accent/10 border border-accent/20 text-accent px-4 py-3 rounded-lg text-sm flex items-center">
-                <AlertCircle className="w-4 h-4 mr-2" />
-                {message}
-              </div>
-            )}
-
             {/* Social Login Buttons */}
             <div className="grid grid-cols-2 gap-4">
               <Button
@@ -127,13 +116,27 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Email Login Form */}
-            <form onSubmit={handleLogin} className="space-y-4">
+            {/* Email Signup Form */}
+            <form onSubmit={handleSignup} className="space-y-4">
               {error && (
                 <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg text-sm">
                   {error}
                 </div>
               )}
+
+              <div className="space-y-2">
+                <label htmlFor="fullName" className="text-sm font-medium">
+                  Full Name
+                </label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  placeholder="Enter your full name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                />
+              </div>
 
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-medium">
@@ -156,7 +159,7 @@ export default function LoginPage() {
                 <Input
                   id="password"
                   type="password"
-                  placeholder="Enter your password"
+                  placeholder="Create a password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -171,12 +174,12 @@ export default function LoginPage() {
                 {loading ? (
                   <div className="flex items-center">
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                    Signing in...
+                    Creating Account...
                   </div>
                 ) : (
                   <div className="flex items-center">
-                    <LogIn className="w-4 h-4 mr-2" />
-                    Sign In
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Create Account
                   </div>
                 )}
               </Button>
@@ -184,30 +187,33 @@ export default function LoginPage() {
 
             <div className="text-center">
               <p className="text-sm text-muted-foreground">
-                Don't have an account?{' '}
+                Already have an account?{' '}
                 <Link 
-                  href={ROUTES.AUTH.SIGNUP}
+                  href={ROUTES.AUTH.LOGIN}
                   className="text-primary hover:text-primary/80 font-medium"
                 >
-                  Sign up for free
+                  Sign in
                 </Link>
               </p>
             </div>
 
-            {/* Quick Stats */}
+            {/* Features Preview */}
             <div className="pt-4 space-y-3 border-t border-border">
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <div className="text-lg font-bold text-primary">10K+</div>
-                  <div className="text-xs text-muted-foreground">Videos Created</div>
+              <p className="text-xs text-muted-foreground text-center font-medium">
+                What you'll get:
+              </p>
+              <div className="grid grid-cols-1 gap-2 text-xs text-muted-foreground">
+                <div className="flex items-center">
+                  <div className="w-1.5 h-1.5 bg-accent rounded-full mr-2" />
+                  5 free video generations
                 </div>
-                <div>
-                  <div className="text-lg font-bold text-accent">500K+</div>
-                  <div className="text-xs text-muted-foreground">Total Views</div>
+                <div className="flex items-center">
+                  <div className="w-1.5 h-1.5 bg-primary rounded-full mr-2" />
+                  AI-powered script enhancement
                 </div>
-                <div>
-                  <div className="text-lg font-bold text-secondary">99.9%</div>
-                  <div className="text-xs text-muted-foreground">Uptime</div>
+                <div className="flex items-center">
+                  <div className="w-1.5 h-1.5 bg-secondary rounded-full mr-2" />
+                  Professional templates
                 </div>
               </div>
             </div>
