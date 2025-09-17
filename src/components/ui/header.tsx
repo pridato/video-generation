@@ -2,73 +2,91 @@
 
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { useRouter, usePathname } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
+import { useToast } from '@/contexts/ToastContext'
+import { useSubscriptionHelpers } from '@/hooks/useSubscriptionHelpers'
 import { ROUTES } from '@/lib/constants'
 import { Button } from '@/components/ui/button'
-import { useSubscription } from '@/hooks/useSubscription'
 import { getPopularTemplates, getTemplateCategories, type Template } from '@/lib/supabase/templates'
-import { Play, LogOut, User, Menu, X, Palette, BarChart3, CreditCard, ChevronDown, Star, Crown } from 'lucide-react'
+import {
+  Play, LogOut, User, Menu, X, Palette, BarChart3, CreditCard,
+  ChevronDown, Star, Crown, Settings, Coins, Bell, Plus
+} from 'lucide-react'
+
+const NAVIGATION_DATA = {
+  landing: [
+    { href: '#features', label: 'Características' },
+    { href: '/pricing', label: 'Precios' },
+    { href: '#testimonials', label: 'Testimonios' }
+  ],
+  authenticated: [
+    { href: ROUTES.CREATE, label: 'Crear', icon: null },
+    { href: ROUTES.LIBRARY, label: 'Biblioteca', icon: null },
+    { href: '/templates', label: 'Templates', icon: Palette }
+  ],
+  premium: [
+    { href: '/analytics', label: 'Analytics', icon: BarChart3 }
+  ]
+}
 
 export function Header() {
   const router = useRouter()
-  const supabase = createClient()
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
+  const pathname = usePathname()
+  const { user, isLoading, signOut } = useAuth()
+  const { success } = useToast()
+  const {
+    tier,
+    subscriptionInfo,
+    getTierIcon,
+    getCreditStatus,
+    hasAccess,
+    isPremium
+  } = useSubscriptionHelpers()
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isTemplatesOpen, setIsTemplatesOpen] = useState(false)
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [popularTemplates, setPopularTemplates] = useState<Template[]>([])
   const [templateCategories, setTemplateCategories] = useState<string[]>([])
-  const { hasAccess } = useSubscription()
+
+  const isAuthenticated = !!user
+  const isLandingPage = pathname === '/'
+  const creditStatus = getCreditStatus()
+
+  // Helper para determinar si un link está activo
+  const isActiveLink = (href: string) => {
+    if (href.startsWith('#')) return false
+    return pathname === href || (href !== '/' && pathname.startsWith(href))
+  }
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        setIsAuthenticated(!!session)
-
-        // Load templates if authenticated
-        if (session) {
+    const loadTemplates = async () => {
+      if (isAuthenticated) {
+        try {
           const [templates, categories] = await Promise.all([
             getPopularTemplates(6),
             getTemplateCategories()
           ])
           setPopularTemplates(templates)
           setTemplateCategories(categories)
+        } catch (error) {
+          console.error('Error loading templates:', error)
         }
-      } catch (error) {
-        console.error('Error checking auth:', error)
-        setIsAuthenticated(false)
-      } finally {
-        setIsLoading(false)
       }
     }
 
-    checkAuth()
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setIsAuthenticated(!!session)
-
-      if (session) {
-        const [templates, categories] = await Promise.all([
-          getPopularTemplates(6),
-          getTemplateCategories()
-        ])
-        setPopularTemplates(templates)
-        setTemplateCategories(categories)
-      } else {
-        setPopularTemplates([])
-        setTemplateCategories([])
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [supabase.auth])
+    loadTemplates()
+  }, [isAuthenticated])
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push(ROUTES.HOME)
+    try {
+      await signOut()
+      success('Sesión cerrada exitosamente')
+      router.push(ROUTES.HOME)
+    } catch (error) {
+      console.error('Error signing out:', error)
+    }
   }
 
   const handleLogoClick = () => {
@@ -99,6 +117,130 @@ export function Header() {
     )
   }
 
+  const CreditIndicator = () => {
+    if (!isAuthenticated) return null
+
+    return (
+      <div className="flex items-center gap-2">
+        {/* Mostrar créditos */}
+        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+          creditStatus.isVeryLow ? 'bg-red-50 hover:bg-red-100 text-red-700' :
+          creditStatus.isLow ? 'bg-yellow-50 hover:bg-yellow-100 text-yellow-700' :
+          'bg-muted/30 hover:bg-muted/50'
+        }`}>
+          <Coins className={`w-4 h-4 ${
+            creditStatus.isVeryLow ? 'text-red-500' :
+            creditStatus.isLow ? 'text-yellow-500' :
+            'text-green-500'
+          }`} />
+          <span className="text-sm font-medium">
+            {creditStatus.remaining}
+          </span>
+          {creditStatus.isLow && (
+            <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${
+              creditStatus.isVeryLow ? 'bg-red-500' : 'bg-yellow-500'
+            }`} />
+          )}
+        </div>
+
+        {/* Botón comprar créditos */}
+        <Button
+          size="sm"
+          variant="outline"
+          className="flex items-center gap-1 h-9 px-3"
+          onClick={() => router.push('/pricing?tab=credits')}
+        >
+          <Plus className="w-3 h-3" />
+          <span className="hidden sm:inline">Comprar</span>
+        </Button>
+      </div>
+    )
+  }
+
+  const UserDropdown = () => {
+    if (!isAuthenticated || !user) return null
+
+    return (
+      <div className="relative">
+        <button
+          onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+          className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/30 transition-colors"
+        >
+          {/* Avatar mejorado */}
+          <div className="w-9 h-9 bg-gradient-to-br from-primary/30 to-secondary/30 rounded-full flex items-center justify-center ring-2 ring-primary/20">
+            <User className="w-5 h-5 text-primary" />
+          </div>
+
+          {/* Info del usuario */}
+          <div className="hidden sm:block text-left min-w-0">
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-medium truncate max-w-24">
+                {user?.email?.split('@')[0]}
+              </p>
+              {getTierIcon(tier)}
+            </div>
+            <p className={`text-xs font-medium ${subscriptionInfo.color}`}>
+              {subscriptionInfo.label}
+            </p>
+          </div>
+
+          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+        </button>
+
+        {isUserMenuOpen && (
+          <div className="absolute right-0 top-full mt-2 w-64 bg-background border border-border rounded-xl shadow-xl z-50 p-3">
+            <div className="px-3 py-3 border-b border-border mb-2">
+              <p className="font-medium text-sm">{user?.email?.split('@')[0]}</p>
+              <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+              <div className="flex items-center justify-between mt-3">
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${subscriptionInfo.bgColor} ${subscriptionInfo.color}`}>
+                    {subscriptionInfo.label}
+                  </span>
+                  {getTierIcon(tier)}
+                </div>
+                <div className="text-xs text-muted-foreground font-medium">
+                  {creditStatus.remaining}/{creditStatus.total} créditos
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Link
+                href={ROUTES.SETTINGS}
+                className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-muted/50 transition-colors"
+                onClick={() => setIsUserMenuOpen(false)}
+              >
+                <Settings className="w-4 h-4" />
+                Configuración
+              </Link>
+
+              <Link
+                href="/pricing"
+                className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-muted/50 transition-colors"
+                onClick={() => setIsUserMenuOpen(false)}
+              >
+                <CreditCard className="w-4 h-4" />
+                Gestionar Plan
+              </Link>
+
+              <button
+                onClick={() => {
+                  setIsUserMenuOpen(false)
+                  handleSignOut()
+                }}
+                className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors w-full text-left"
+              >
+                <LogOut className="w-4 h-4" />
+                Cerrar Sesión
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <nav className="border-b border-border/50 bg-background/80 backdrop-blur-md sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -119,15 +261,19 @@ export function Header() {
           {!isAuthenticated ? (
             <>
               <div className="hidden md:flex items-center space-x-8">
-                <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Características
-                </a>
-                <Link href="/pricing" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Precios
-                </Link>
-                <a href="#testimonials" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Testimonios
-                </a>
+                {NAVIGATION_DATA.landing.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`transition-colors ${
+                      isActiveLink(item.href)
+                        ? 'text-foreground font-medium'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
               </div>
 
               <div className="flex items-center space-x-4">
@@ -149,109 +295,53 @@ export function Header() {
             </>
           ) : (
             <>
-              <div className="hidden md:flex items-center space-x-8">
-                <Link href={ROUTES.CREATE} className="text-muted-foreground hover:text-foreground transition-colors">
-                  Crear
-                </Link>
-                <Link href={ROUTES.LIBRARY} className="text-muted-foreground hover:text-foreground transition-colors">
-                  Biblioteca
-                </Link>
-                <div className="relative">
-                  <button
-                    onMouseEnter={() => setIsTemplatesOpen(true)}
-                    onMouseLeave={() => setIsTemplatesOpen(false)}
-                    className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-                  >
-                    <Palette className="w-4 h-4" />
-                    Templates
-                    <ChevronDown className="w-3 h-3" />
-                  </button>
+              {/* Navegación centrada */}
+              <div className="hidden md:flex items-center justify-center flex-1">
+                <div className="flex items-center space-x-8">
+                  {NAVIGATION_DATA.authenticated.map((item) => {
+                    const IconComponent = item.icon
+                    const isActive = isActiveLink(item.href)
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={`transition-colors flex items-center gap-2 px-3 py-2 rounded-lg ${
+                          isActive
+                            ? 'text-foreground font-medium bg-primary/10'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                        }`}
+                      >
+                        {IconComponent && <IconComponent className="w-4 h-4" />}
+                        {item.label}
+                      </Link>
+                    )
+                  })}
 
-                  {isTemplatesOpen && (
-                    <div
-                      onMouseEnter={() => setIsTemplatesOpen(true)}
-                      onMouseLeave={() => setIsTemplatesOpen(false)}
-                      className="absolute top-full left-0 mt-2 w-96 bg-background border border-border rounded-xl shadow-xl z-50 p-6"
-                    >
-                      <div className="space-y-6">
-                        <div>
-                          <h3 className="font-semibold mb-3 flex items-center gap-2">
-                            <Star className="w-4 h-4 text-yellow-500" />
-                            Templates Populares
-                          </h3>
-                          <div className="grid grid-cols-2 gap-3">
-                            {popularTemplates.slice(0, 4).map((template) => (
-                              <Link
-                                key={template.id}
-                                href={`/templates/${template.id}`}
-                                className="group p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors"
-                              >
-                                <div className="flex items-center gap-2 mb-1">
-                                  <div className="w-6 h-6 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-md flex items-center justify-center text-xs">
-                                    {template.category?.charAt(0)?.toUpperCase()}
-                                  </div>
-                                  <span className="text-sm font-medium group-hover:text-primary">{template.name}</span>
-                                  {template.is_premium && <Crown className="w-3 h-3 text-yellow-500" />}
-                                </div>
-                                <p className="text-xs text-muted-foreground line-clamp-2">{template.description}</p>
-                              </Link>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div>
-                          <h4 className="font-medium mb-3">Categorías</h4>
-                          <div className="flex flex-wrap gap-2">
-                            {templateCategories.slice(0, 6).map((category) => (
-                              <Link
-                                key={category}
-                                href={`/templates?category=${category}`}
-                                className="px-3 py-1 bg-muted/50 hover:bg-muted rounded-full text-xs font-medium transition-colors capitalize"
-                              >
-                                {category}
-                              </Link>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="pt-3 border-t border-border">
-                          <Link
-                            href="/templates"
-                            className="flex items-center justify-center gap-2 text-primary hover:text-primary/80 font-medium text-sm"
-                          >
-                            Ver Todos los Templates
-                            <ChevronDown className="w-4 h-4 rotate-[-90deg]" />
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  {/* Premium Analytics - Solo para Pro y Enterprise */}
+                  {hasAccess('pro') && NAVIGATION_DATA.premium.map((item) => {
+                    const IconComponent = item.icon!
+                    const isActive = isActiveLink(item.href)
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={`transition-colors flex items-center gap-2 px-3 py-2 rounded-lg ${
+                          isActive
+                            ? 'text-foreground font-medium bg-primary/10'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                        }`}
+                      >
+                        <IconComponent className="w-4 h-4" />
+                        {item.label}
+                      </Link>
+                    )
+                  })}
                 </div>
-                {hasAccess('PRO') && (
-                  <Link href="/analytics" className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
-                    <BarChart3 className="w-4 h-4" />
-                    Analytics
-                  </Link>
-                )}
-                <Link href="/pricing" className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
-                  <CreditCard className="w-4 h-4" />
-                  Créditos
-                </Link>
               </div>
 
-              <div className="flex items-center space-x-4">
-                <Link href={ROUTES.SETTINGS} className="text-muted-foreground hover:text-foreground transition-colors">
-                  <User className="w-4 h-4" />
-                </Link>
-                <Button
-                  onClick={handleSignOut}
-                  variant="outline"
-                  size="sm"
-                  className="hidden sm:flex items-center space-x-2"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span>Salir</span>
-                </Button>
+              <div className="flex items-center space-x-3">
+                <CreditIndicator />
+                <UserDropdown />
                 <Button
                   variant="ghost"
                   size="sm"
@@ -268,55 +358,119 @@ export function Header() {
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden border-t border-border/50 bg-background/95 backdrop-blur-md">
-            <div className="px-4 py-4 space-y-4">
+            <div className="px-4 py-4 space-y-3">
               {!isAuthenticated ? (
                 <>
-                  <a href="#features" className="block text-muted-foreground hover:text-foreground transition-colors py-2">
-                    Características
-                  </a>
-                  <Link href="/pricing" className="block text-muted-foreground hover:text-foreground transition-colors py-2">
-                    Precios
-                  </Link>
-                  <a href="#testimonials" className="block text-muted-foreground hover:text-foreground transition-colors py-2">
-                    Testimonios
-                  </a>
-                  <hr className="border-border/50" />
-                  <Link href="/auth/login" className="block text-muted-foreground hover:text-foreground transition-colors py-2">
+                  {NAVIGATION_DATA.landing.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="block text-muted-foreground hover:text-foreground transition-colors py-2"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                  <hr className="border-border/50 my-3" />
+                  <Link
+                    href="/auth/login"
+                    className="block text-muted-foreground hover:text-foreground transition-colors py-2"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
                     Iniciar Sesión
                   </Link>
-                  <Link href="/auth/register" className="block bg-gradient-to-r from-primary to-secondary text-white text-center py-3 rounded-lg font-medium">
+                  <Link
+                    href="/auth/register"
+                    className="block bg-gradient-to-r from-primary to-secondary text-white text-center py-3 rounded-lg font-medium"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
                     Empezar Gratis
                   </Link>
                 </>
               ) : (
                 <>
-                  <Link href={ROUTES.CREATE} className="block text-muted-foreground hover:text-foreground transition-colors py-2">
-                    Crear Video
-                  </Link>
-                  <Link href={ROUTES.LIBRARY} className="block text-muted-foreground hover:text-foreground transition-colors py-2">
-                    Mi Biblioteca
-                  </Link>
-                  <Link href="/templates" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors py-2">
+                  {/* User Profile Section */}
+                  {profile && (
+                    <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg mb-4">
+                      <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-full flex items-center justify-center">
+                        <User className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{profile.full_name || user?.email?.split('@')[0]}</p>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${subscriptionInfo.bgColor} ${subscriptionInfo.color}`}>
+                              {subscriptionInfo.label}
+                            </span>
+                            {getTierIcon(userTier)}
+                          </div>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Coins className="w-3 h-3" />
+                            {profile.credits_remaining}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Main Navigation */}
+                  {NAVIGATION_DATA.authenticated.map((item) => {
+                    const IconComponent = item.icon
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors py-2"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        {IconComponent && <IconComponent className="w-4 h-4" />}
+                        {item.label}
+                      </Link>
+                    )
+                  })}
+
+                  <Link
+                    href="/templates"
+                    className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors py-2"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
                     <Palette className="w-4 h-4" />
                     Templates
                   </Link>
-                  {hasAccess('PRO') && (
-                    <Link href="/analytics" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors py-2">
-                      <BarChart3 className="w-4 h-4" />
-                      Analytics
-                    </Link>
-                  )}
-                  <Link href="/pricing" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors py-2">
-                    <CreditCard className="w-4 h-4" />
-                    Comprar Créditos
+
+                  {/* Premium Features - Solo para Pro y Enterprise */}
+                  {hasFeatureAccess(userTier, 'pro') && NAVIGATION_DATA.premium.map((item) => {
+                    const IconComponent = item.icon!
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors py-2"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        <IconComponent className="w-4 h-4" />
+                        {item.label}
+                      </Link>
+                    )
+                  })}
+
+                  <hr className="border-border/50 my-3" />
+
+                  {/* Settings & Account */}
+                  <Link
+                    href={ROUTES.SETTINGS}
+                    className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors py-2"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <Settings className="w-4 h-4" />
+                    Configuración
                   </Link>
-                  <hr className="border-border/50" />
-                  <Link href={ROUTES.SETTINGS} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors py-2">
-                    <User className="w-4 h-4" />
-                    Mi Perfil
-                  </Link>
+
                   <button
-                    onClick={handleSignOut}
+                    onClick={() => {
+                      setIsMobileMenuOpen(false)
+                      handleSignOut()
+                    }}
                     className="flex items-center gap-2 text-red-600 hover:text-red-700 transition-colors py-2 w-full text-left"
                   >
                     <LogOut className="w-4 h-4" />

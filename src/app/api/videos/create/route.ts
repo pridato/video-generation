@@ -32,25 +32,28 @@ export async function POST(request: NextRequest) {
     }
 
     // Check user credits and video limit
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('credits, videos_used, subscription_tier')
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('credits, credits_remaining, videos_used, subscription_tier')
       .eq('id', userId)
       .single()
 
-    if (userError || !user) {
+    if (profileError || !profile) {
       return NextResponse.json(
-        { error: 'User not found' },
+        { error: 'User profile not found' },
         { status: 404 }
       )
     }
 
-    // Check if user can create video (has credits or subscription)
-    const canCreateVideo = user.credits > 0 || user.subscription_tier !== 'FREE'
+    // Check if user can create video (has credits remaining)
+    const canCreateVideo = profile.credits_remaining > 0
 
     if (!canCreateVideo) {
       return NextResponse.json(
-        { error: 'Insufficient credits or subscription required' },
+        {
+          error: 'Insufficient credits remaining',
+          credits_remaining: profile.credits_remaining
+        },
         { status: 403 }
       )
     }
@@ -80,33 +83,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Deduct credit if user is using credits (not subscription)
-    if (user.subscription_tier === 'FREE' && user.credits > 0) {
-      const { error: creditError } = await supabase
-        .from('users')
-        .update({
-          credits: user.credits - 1,
-          videos_used: user.videos_used + 1,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId)
+    // Deduct credit and update usage
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({
+        credits_remaining: profile.credits_remaining - 1,
+        videos_used: profile.videos_used + 1,
+        usage_count: (profile.usage_count || 0) + 1,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId)
 
-      if (creditError) {
-        console.error('Error updating user credits:', creditError)
-      }
-    } else {
-      // Just update videos_used for subscription users
-      const { error: usageError } = await supabase
-        .from('users')
-        .update({
-          videos_used: user.videos_used + 1,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId)
-
-      if (usageError) {
-        console.error('Error updating user usage:', usageError)
-      }
+    if (updateError) {
+      console.error('Error updating profile:', updateError)
+      return NextResponse.json(
+        { error: 'Failed to update user credits' },
+        { status: 500 }
+      )
     }
 
     // Here you would typically trigger the actual video generation process
@@ -135,7 +128,9 @@ export async function POST(request: NextRequest) {
         title: video.title,
         status: video.status,
         created_at: video.created_at
-      }
+      },
+      credits_remaining: profile.credits_remaining - 1,
+      message: 'Video creation started successfully'
     })
 
   } catch (error) {

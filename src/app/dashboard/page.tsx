@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ROUTES } from '@/lib/constants'
-import { Navbar } from '@/components/layout/navbar'
+import { Header } from '@/components/ui/header'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Plus, Video, TrendingUp, Clock, Sparkles, Play, Download, Share2 } from 'lucide-react'
@@ -20,7 +20,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
+      <Header />
       
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         {/* Welcome Header */}

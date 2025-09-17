@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Navbar } from '@/components/layout/navbar'
+import { Header } from '@/components/ui/header'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -138,7 +138,7 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
+      <Header />
       
       <main className="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         {/* Header */}

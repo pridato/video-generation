@@ -1,7 +1,10 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Navbar } from '@/components/layout/navbar'
+import { useRouter } from 'next/navigation'
+import { Header } from '@/components/ui/header'
+import { useAuth } from '@/contexts/AuthContext'
+import { useToast } from '@/contexts/ToastContext'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -109,6 +112,9 @@ const SCRIPT_PLACEHOLDERS = [
 ]
 
 export default function CreatePage() {
+  const router = useRouter()
+  const { user } = useAuth()
+  const { success, error } = useToast()
   const [currentStep, setCurrentStep] = useState(1)
   const [script, setScript] = useState('')
   const [enhancedScript, setEnhancedScript] = useState('')
@@ -140,16 +146,6 @@ export default function CreatePage() {
     }
   }
 
-  const canProceedToNext = () => {
-    switch (currentStep) {
-      case 1: return script.trim().length > 0
-      case 2: return enhancedScript.length > 0
-      case 3: return selectedTemplate !== null
-      case 4: return selectedVoice !== null
-      default: return false
-    }
-  }
-
   const handleNext = () => {
     if (currentStep === 1 && script.trim()) {
       setCurrentStep(2)
@@ -163,17 +159,71 @@ export default function CreatePage() {
   }
 
   const handleGenerate = async () => {
+    if (!user) {
+      error('Debes iniciar sesión para crear videos')
+      return
+    }
+
+    if (!script.trim()) {
+      error('Por favor ingresa un script')
+      return
+    }
+
+    if (!selectedTemplate) {
+      error('Por favor selecciona una plantilla')
+      return
+    }
+
+    if (!selectedVoice) {
+      error('Por favor selecciona una voz')
+      return
+    }
+
     setIsGenerating(true)
-    // Simulate video generation
-    setTimeout(() => {
+
+    try {
+      const response = await fetch('/api/videos/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          title: `Video ${new Date().toLocaleDateString()}`,
+          script: enhancedScript || script,
+          templateId: selectedTemplate,
+          voiceId: selectedVoice,
+          enhancedScript: enhancedScript
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al crear el video')
+      }
+
+      success('¡Video creado exitosamente!', `Te quedan ${data.credits_remaining} créditos`)
+
+      // Redirect to library after a short delay
+      setTimeout(() => {
+        router.push('/library')
+      }, 2000)
+
+    } catch (err) {
+      console.error('Error creating video:', err)
+      error(
+        'Error al crear el video',
+        err instanceof Error ? err.message : 'Inténtalo de nuevo más tarde'
+      )
+    } finally {
       setIsGenerating(false)
-      // Redirect to library or show success
-    }, 5000)
+    }
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5">
-      <Navbar />
+      <Header />
 
       <main className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* Progress Steps */}
