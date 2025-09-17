@@ -46,7 +46,7 @@ export default function PricingPage() {
         window.location.href = 'mailto:sales@shortsai.com?subject=Enterprise Plan Inquiry'
       } else if (plan.stripePriceId) {
         // Create Stripe checkout session
-        await createCheckoutSession(plan.id, isAnnual)
+        await createCheckoutSession(plan.id, false)
       }
     } catch (error) {
       console.error('Error upgrading plan:', error)
@@ -323,7 +323,7 @@ export default function PricingPage() {
                   </div>
 
                   <p className="text-muted-foreground mb-6 italic">
-                    "{testimonial.content}"
+                    &quot;{testimonial.content}&quot;
                   </p>
 
                   <div className="flex items-center justify-between">

@@ -12,7 +12,7 @@ export default async function DashboardPage() {
   
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await (await supabase).auth.getUser()
 
   if (!user) {
     redirect(ROUTES.AUTH.LOGIN)
@@ -108,7 +108,7 @@ export default async function DashboardPage() {
                     <h3 className="font-semibold mb-2">💡 Lifestyle</h3>
                     <p className="text-sm text-muted-foreground">Tips, motivation, life hacks</p>
                   </div>
-                  <div className="p-4 border border-border rounded-lg hover:bg-accent/5 transition-colors cursor-pointer bg-gradient-to-br from-primary/10 to-secondary/10 border-primary/30">
+                  <div className="p-4 border rounded-lg hover:bg-accent/5 transition-colors cursor-pointer bg-gradient-to-br from-primary/10 to-secondary/10 border-primary/30">
                     <h3 className="font-semibold mb-2">⚡ Code to Video</h3>
                     <p className="text-sm text-muted-foreground">AI-powered code explanations</p>
                     <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">PRO</span>

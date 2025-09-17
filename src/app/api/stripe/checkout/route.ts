@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/services/supabase/server'
-import { createCheckoutSession, getCustomerByEmail, createCustomer } from '@/lib/stripe'
-import { STRIPE_PRICES } from '@/lib/stripe'
+import { createCheckoutSession, getCustomerByEmail, createCustomer } from '@/lib/services/stripe'
+import { STRIPE_PRICES } from '@/lib/services'
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
 
     // Get user from Supabase
     const supabase = createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const { data: { user }, error: authError } = await (await supabase).auth.getUser()
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     const { sessionId, url } = await createCheckoutSession({
       priceId,
       customerId: customer.id,
-      successUrl: `${request.nextUrl.origin}/dashboard?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      successUrl: `${request.nextUrl.origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&plan=${planId}`,
       cancelUrl: `${request.nextUrl.origin}/pricing?canceled=true`,
       metadata: {
         userId: user.id,
@@ -51,6 +51,8 @@ export async function POST(request: NextRequest) {
         isAnnual: isAnnual.toString(),
       },
     })
+
+    await (await supabase).from('profiles').update({ role: planId }).eq('id', user.id)
 
     return NextResponse.json({ sessionId, url })
   } catch (error) {

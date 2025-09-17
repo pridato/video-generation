@@ -9,6 +9,8 @@ export interface UserProfile {
   subscription_tier: 'FREE' | 'CREATOR' | 'PRO' | 'ENTERPRISE'
   stripe_customer_id?: string
   subscription_status?: 'active' | 'canceled' | 'past_due' | 'incomplete'
+  is_annual?: boolean
+  plan_id?: string
   credits: number
   videos_used: number
   created_at: string
@@ -55,6 +57,7 @@ export function useSubscription() {
               .single()
 
             if (insertError) throw insertError
+            newUser.plan_id = crypto.randomUUID()
             setUser(newUser)
           } else {
             throw error
@@ -101,7 +104,9 @@ export function useSubscription() {
         throw new Error('Failed to create checkout session')
       }
 
+
       const { url } = await response.json()
+      console.log('Redirecting to checkout URL:', url)
       window.location.href = url
     } catch (err: unknown) {
       if (err instanceof Error) {
