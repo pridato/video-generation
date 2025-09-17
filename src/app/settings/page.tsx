@@ -6,10 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
-import { Select } from '@/components/ui/select'
 import { 
   User, 
-  Mic, 
   Palette, 
   Shield, 
   Bell,
@@ -20,15 +18,16 @@ import {
   EyeOff,
   Check
 } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
+import Image from 'next/image'
 
 export default function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [profile, setProfile] = useState({
-    fullName: 'Juan Pérez',
-    email: 'juan@example.com',
-    avatar: ''
-  })
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+
+  
+  const { profile, user } = useAuth()
+
+  const [, setAvatarPreview] = useState<string | null>(null)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
 
   const [preferences, setPreferences] = useState({
@@ -48,6 +47,12 @@ export default function SettingsPage() {
 
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+
+  // Agregar estado para el perfil
+  const [profileData, setProfileData] = useState({
+    fullName: profile?.full_name || '',
+    email: profile?.email || user?.email || ''
+  })
 
   const voices = [
     { id: 'spanish-male-1', name: 'Carlos (Masculina)' },
@@ -118,10 +123,7 @@ export default function SettingsPage() {
 
       // Simular upload a Supabase Storage
       await new Promise(resolve => setTimeout(resolve, 2000))
-
-      // Actualizar profile con la nueva URL del avatar
-      const avatarUrl = `/avatars/${Date.now()}-${file.name}`
-      setProfile(prev => ({ ...prev, avatar: avatarUrl }))
+      
 
       alert('Avatar actualizado exitosamente')
     } catch (error) {
@@ -166,15 +168,19 @@ export default function SettingsPage() {
             <CardContent className="space-y-6">
               <div className="flex items-center gap-6">
                 <div className="relative">
-                  <div className="w-20 h-20 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-full flex items-center justify-center text-2xl font-bold overflow-hidden">
-                    {avatarPreview || profile.avatar ? (
-                      <img
-                        src={avatarPreview || profile.avatar}
+                  <div className="w-9 h-9 bg-gradient-to-br from-primary/30 to-secondary/30 rounded-full flex items-center justify-center ring-2 ring-primary/20">
+                    {profile?.avatar_url ? (
+                      <Image
+                        src={profile.avatar_url}
                         alt="Avatar"
-                        className="w-full h-full object-cover"
+                        width={36}
+                        height={36}
+                        className="w-full h-full object-cover rounded-full"
                       />
                     ) : (
-                      profile.fullName.split(' ').map(n => n[0]).join('')
+                      <span className="text-lg font-bold text-primary">
+                        {(profile?.full_name || user?.email)?.charAt(0).toUpperCase() || 'U'}
+                      </span>
                     )}
                   </div>
                   {uploadingAvatar && (
@@ -210,16 +216,16 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Nombre Completo</label>
                   <Input
-                    value={profile.fullName}
-                    onChange={(e) => setProfile({...profile, fullName: e.target.value})}
+                    value={profileData.fullName}
+                    onChange={(e) => setProfileData({...profileData, fullName: e.target.value})}
                     placeholder="Tu nombre completo"
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Email</label>
                   <Input
-                    value={profile.email}
-                    onChange={(e) => setProfile({...profile, email: e.target.value})}
+                    value={profileData.email}
+                    onChange={(e) => setProfileData({...profileData, email: e.target.value})}
                     placeholder="tu@email.com"
                     type="email"
                   />
@@ -257,42 +263,41 @@ export default function SettingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Voz Predeterminada</label>
-                  <Select
+                  <select
                     value={preferences.defaultVoice}
                     onChange={(e) => setPreferences({...preferences, defaultVoice: e.target.value})}
-                    variant="creator"
-                    options={voices.map(voice => ({
-                      value: voice.id,
-                      label: voice.name
-                    }))}
-                  />
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background"
+                  >
+                    {voices.map(voice => (
+                      <option key={voice.id} value={voice.id}>{voice.name}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Plantilla Predeterminada</label>
-                  <Select
+                  <select
                     value={preferences.defaultTemplate}
                     onChange={(e) => setPreferences({...preferences, defaultTemplate: e.target.value})}
-                    variant="creator"
-                    options={templates.map(template => ({
-                      value: template.id,
-                      label: template.name
-                    }))}
-                  />
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background"
+                  >
+                    {templates.map(template => (
+                      <option key={template.id} value={template.id}>{template.name}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Calidad Predeterminada</label>
-                  <Select
+                  <select
                     value={preferences.defaultQuality}
                     onChange={(e) => setPreferences({...preferences, defaultQuality: e.target.value})}
-                    variant="creator"
-                    options={[
-                      { value: '720p', label: '720p' },
-                      { value: '1080p', label: '1080p (Recomendado)' },
-                      { value: '4k', label: '4K (Solo PRO)' }
-                    ]}
-                  />
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background"
+                  >
+                    <option value="720p">720p</option>
+                    <option value="1080p">1080p (Recomendado)</option>
+                    <option value="4k">4K (Solo PRO)</option>
+                  </select>
                 </div>
               </div>
 

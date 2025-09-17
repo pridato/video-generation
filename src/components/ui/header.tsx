@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { getPopularTemplates, getTemplateCategories, type Template } from '@/lib/supabase/templates'
 import {
   Play, LogOut, User, Menu, X, Palette, BarChart3, CreditCard,
-  ChevronDown, Star, Crown, Settings, Coins, Bell, Plus
+  ChevronDown, Settings, Coins, Plus
 } from 'lucide-react'
 
 const NAVIGATION_DATA = {
@@ -33,26 +33,20 @@ const NAVIGATION_DATA = {
 export function Header() {
   const router = useRouter()
   const pathname = usePathname()
-  const { user, isLoading, signOut } = useAuth()
+  const { user, profile, isLoading, signOut } = useAuth()
   const { success } = useToast()
-  const {
-    tier,
+   const {
     subscriptionInfo,
     getTierIcon,
-    getCreditStatus,
     hasAccess,
-    isPremium
   } = useSubscriptionHelpers()
 
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [isTemplatesOpen, setIsTemplatesOpen] = useState(false)
+ const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
-  const [popularTemplates, setPopularTemplates] = useState<Template[]>([])
-  const [templateCategories, setTemplateCategories] = useState<string[]>([])
+  const [, setPopularTemplates] = useState<Template[]>([])
+  const [, setTemplateCategories] = useState<string[]>([])
 
   const isAuthenticated = !!user
-  const isLandingPage = pathname === '/'
-  const creditStatus = getCreditStatus()
 
   // Helper para determinar si un link está activo
   const isActiveLink = (href: string) => {
@@ -83,7 +77,7 @@ export function Header() {
     try {
       await signOut()
       success('Sesión cerrada exitosamente')
-      router.push(ROUTES.HOME)
+      router.push(ROUTES.HOME || '/')
     } catch (error) {
       console.error('Error signing out:', error)
     }
@@ -91,9 +85,9 @@ export function Header() {
 
   const handleLogoClick = () => {
     if (isAuthenticated) {
-      router.push(ROUTES.DASHBOARD)
+      router.push(ROUTES.DASHBOARD || '/dashboard')
     } else {
-      router.push(ROUTES.HOME)
+      router.push(ROUTES.HOME || '/')
     }
   }
 
@@ -118,27 +112,31 @@ export function Header() {
   }
 
   const CreditIndicator = () => {
-    if (!isAuthenticated) return null
+    if (!isAuthenticated || !profile) return null
+
+    const creditsRemaining = profile.credits_remaining || profile.credits || 0
+    const isLow = creditsRemaining <= 10
+    const isVeryLow = creditsRemaining <= 3
 
     return (
       <div className="flex items-center gap-2">
         {/* Mostrar créditos */}
         <div className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-          creditStatus.isVeryLow ? 'bg-red-50 hover:bg-red-100 text-red-700' :
-          creditStatus.isLow ? 'bg-yellow-50 hover:bg-yellow-100 text-yellow-700' :
+          isVeryLow ? 'bg-red-50 hover:bg-red-100 text-red-700' :
+          isLow ? 'bg-yellow-50 hover:bg-yellow-100 text-yellow-700' :
           'bg-muted/30 hover:bg-muted/50'
         }`}>
           <Coins className={`w-4 h-4 ${
-            creditStatus.isVeryLow ? 'text-red-500' :
-            creditStatus.isLow ? 'text-yellow-500' :
+            isVeryLow ? 'text-red-500' :
+            isLow ? 'text-yellow-500' :
             'text-green-500'
           }`} />
           <span className="text-sm font-medium">
-            {creditStatus.remaining}
+            {creditsRemaining}
           </span>
-          {creditStatus.isLow && (
+          {isLow && (
             <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${
-              creditStatus.isVeryLow ? 'bg-red-500' : 'bg-yellow-500'
+              isVeryLow ? 'bg-red-500' : 'bg-yellow-500'
             }`} />
           )}
         </div>
@@ -148,7 +146,7 @@ export function Header() {
           size="sm"
           variant="outline"
           className="flex items-center gap-1 h-9 px-3"
-          onClick={() => router.push('/pricing?tab=credits')}
+          onClick={() => router.push('/credits')}
         >
           <Plus className="w-3 h-3" />
           <span className="hidden sm:inline">Comprar</span>
@@ -158,7 +156,7 @@ export function Header() {
   }
 
   const UserDropdown = () => {
-    if (!isAuthenticated || !user) return null
+    if (!isAuthenticated || !user || !profile) return null
 
     return (
       <div className="relative">
@@ -175,12 +173,12 @@ export function Header() {
           <div className="hidden sm:block text-left min-w-0">
             <div className="flex items-center gap-1.5">
               <p className="text-sm font-medium truncate max-w-24">
-                {user?.email?.split('@')[0]}
+                {profile.full_name || user?.email?.split('@')[0]}
               </p>
-              {getTierIcon(tier)}
+              {getTierIcon && getTierIcon(profile.subscription_tier)}
             </div>
-            <p className={`text-xs font-medium ${subscriptionInfo.color}`}>
-              {subscriptionInfo.label}
+            <p className={`text-xs font-medium ${subscriptionInfo?.color || 'text-muted-foreground'}`}>
+              {subscriptionInfo?.label || profile.subscription_tier}
             </p>
           </div>
 
@@ -190,24 +188,24 @@ export function Header() {
         {isUserMenuOpen && (
           <div className="absolute right-0 top-full mt-2 w-64 bg-background border border-border rounded-xl shadow-xl z-50 p-3">
             <div className="px-3 py-3 border-b border-border mb-2">
-              <p className="font-medium text-sm">{user?.email?.split('@')[0]}</p>
+              <p className="font-medium text-sm">{profile.full_name || user?.email?.split('@')[0]}</p>
               <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               <div className="flex items-center justify-between mt-3">
                 <div className="flex items-center gap-2">
-                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${subscriptionInfo.bgColor} ${subscriptionInfo.color}`}>
-                    {subscriptionInfo.label}
+                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${subscriptionInfo?.bgColor || 'bg-muted'} ${subscriptionInfo?.color || 'text-muted-foreground'}`}>
+                    {subscriptionInfo?.label || profile.subscription_tier}
                   </span>
-                  {getTierIcon(tier)}
+                  {getTierIcon && getTierIcon(profile.subscription_tier)}
                 </div>
                 <div className="text-xs text-muted-foreground font-medium">
-                  {creditStatus.remaining}/{creditStatus.total} créditos
+                  {profile.credits_remaining || profile.credits || 0} créditos
                 </div>
               </div>
             </div>
 
             <div className="space-y-1">
               <Link
-                href={ROUTES.SETTINGS}
+                href={ROUTES.SETTINGS || '/settings'}
                 className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-muted/50 transition-colors"
                 onClick={() => setIsUserMenuOpen(false)}
               >
@@ -318,7 +316,7 @@ export function Header() {
                   })}
 
                   {/* Premium Analytics - Solo para Pro y Enterprise */}
-                  {hasAccess('pro') && NAVIGATION_DATA.premium.map((item) => {
+                  {hasAccess && hasAccess('pro') && NAVIGATION_DATA.premium.map((item) => {
                     const IconComponent = item.icon!
                     const isActive = isActiveLink(item.href)
                     return (
@@ -399,14 +397,14 @@ export function Header() {
                         <p className="font-medium text-sm">{profile.full_name || user?.email?.split('@')[0]}</p>
                         <div className="flex items-center gap-2">
                           <div className="flex items-center gap-1">
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${subscriptionInfo.bgColor} ${subscriptionInfo.color}`}>
-                              {subscriptionInfo.label}
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${subscriptionInfo?.bgColor || 'bg-muted'} ${subscriptionInfo?.color || 'text-muted-foreground'}`}>
+                              {subscriptionInfo?.label || profile.subscription_tier}
                             </span>
-                            {getTierIcon(userTier)}
+                            {getTierIcon && getTierIcon(profile.subscription_tier)}
                           </div>
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <Coins className="w-3 h-3" />
-                            {profile.credits_remaining}
+                            {profile.credits_remaining || profile.credits || 0}
                           </div>
                         </div>
                       </div>
@@ -439,7 +437,7 @@ export function Header() {
                   </Link>
 
                   {/* Premium Features - Solo para Pro y Enterprise */}
-                  {hasFeatureAccess(userTier, 'pro') && NAVIGATION_DATA.premium.map((item) => {
+                  {hasAccess && hasAccess('pro') && NAVIGATION_DATA.premium.map((item) => {
                     const IconComponent = item.icon!
                     return (
                       <Link
@@ -458,7 +456,7 @@ export function Header() {
 
                   {/* Settings & Account */}
                   <Link
-                    href={ROUTES.SETTINGS}
+                    href={ROUTES.SETTINGS || '/settings'}
                     className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
