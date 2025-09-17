@@ -79,67 +79,7 @@ src/
 └── context/             # React context providers
 ```
 
-## Database Setup
 
-Create the following tables in your Supabase database:
-
-### Users Table
-```sql
--- Enable RLS
-alter table auth.users enable row level security;
-
--- Create profiles table
-create table public.profiles (
-  id uuid references auth.users on delete cascade not null primary key,
-  email text unique not null,
-  full_name text,
-  avatar_url text,
-  subscription_tier text default 'free',
-  credits_remaining integer default 5,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
--- Set up RLS policies
-create policy "Public profiles are viewable by everyone." on profiles
-  for select using (true);
-
-create policy "Users can insert their own profile." on profiles
-  for insert with check (auth.uid() = id);
-
-create policy "Users can update own profile." on profiles
-  for update using (auth.uid() = id);
-```
-
-### Video Projects Table
-```sql
-create table public.video_projects (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references public.profiles(id) on delete cascade not null,
-  title text not null,
-  description text,
-  status text default 'draft',
-  video_url text,
-  thumbnail_url text,
-  duration integer,
-  settings jsonb not null default '{}',
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
--- Set up RLS policies
-create policy "Users can view own video projects." on video_projects
-  for select using (auth.uid() = user_id);
-
-create policy "Users can insert own video projects." on video_projects
-  for insert with check (auth.uid() = user_id);
-
-create policy "Users can update own video projects." on video_projects
-  for update using (auth.uid() = user_id);
-
-create policy "Users can delete own video projects." on video_projects
-  for delete using (auth.uid() = user_id);
-```
 
 ## Environment Variables
 
