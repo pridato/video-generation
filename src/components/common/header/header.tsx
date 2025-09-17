@@ -26,7 +26,7 @@ const NAVIGATION_DATA = {
     { href: '/templates', label: 'Templates', icon: Palette }
   ],
   premium: [
-    { href: '/analytics', label: 'Analytics', icon: BarChart3 }
+    { href: '/analytics', label: 'Analíticas', icon: BarChart3 }
   ]
 }
 

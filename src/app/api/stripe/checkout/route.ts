@@ -52,8 +52,8 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    await (await supabase).from('profiles').update({ role: planId }).eq('id', user.id)
-
+    
+    
     return NextResponse.json({ sessionId, url })
   } catch (error) {
     console.error('Checkout error:', error)

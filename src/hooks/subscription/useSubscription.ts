@@ -34,9 +34,9 @@ export function useSubscription() {
           return
         }
 
-        // Get user profile from auth.users table
+        // Get user profile from auth.profiles table
         const { data, error } = await supabase
-          .from('users')
+          .from('profiles')
           .select('id, email, subscription_tier, stripe_customer_id, subscription_status, credits, videos_used, created_at, updated_at')
           .eq('id', authUser.id)
           .single()
@@ -45,7 +45,7 @@ export function useSubscription() {
           // If user doesn't exist, create with default values
           if (error.code === 'PGRST116') {
             const { data: newUser, error: insertError } = await supabase
-              .from('users')
+              .from('profiles')
               .insert({
                 id: authUser.id,
                 email: authUser.email,
@@ -144,15 +144,13 @@ export function useSubscription() {
 
   // Helper functions to check plan access based on subscription_tier
   const hasAccess = (feature: string) => {
-    if (!user) return false
-
-    switch (user.subscription_tier) {
+    switch (feature) {
       case 'FREE':
-        return ['basic_templates'].includes(feature)
+        return ['basic_templates']
       case 'CREATOR':
-        return ['basic_templates', 'hd_resolution', '50_videos', 'premium_voices'].includes(feature)
+        return ['basic_templates', 'hd_resolution', '50_videos', 'premium_voices']
       case 'PRO':
-        return ['basic_templates', 'premium_templates', 'hd_resolution', '4k_resolution', 'analytics', '200_videos', 'premium_voices', 'PRO'].includes(feature)
+        return ['basic_templates', 'premium_templates', 'hd_resolution', '4k_resolution', 'analytics', '200_videos', 'premium_voices', 'PRO']
       case 'ENTERPRISE':
         return true // All features
       default:
@@ -190,7 +188,7 @@ export function useSubscription() {
 
     try {
       const { error } = await supabase
-        .from('users')
+        .from('profiles')
         .update(updates)
         .eq('id', user.id)
 

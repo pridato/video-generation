@@ -23,6 +23,7 @@ import {
   RefreshCw,
   Sparkles
 } from 'lucide-react'
+import { useAuth } from '@/hooks/auth'
 
 // Mock analytics data - in real app this would come from API
 const ANALYTICS_DATA = {
@@ -115,11 +116,14 @@ export default function AnalyticsPage() {
   const [selectedMetric, setSelectedMetric] = useState('views')
   const [isRefreshing, setIsRefreshing] = useState(false)
 
+  const {user} = useAuth()
+
   useEffect(() => {
-    if (!loading && !hasAccess('PRO')) {
+    console.log("User in analytics:", user)
+    if (!loading && !hasAccess(user?.role+"")) {
       router.push('/pricing?feature=analytics')
     }
-  }, [hasAccess, loading, router])
+  }, [hasAccess, loading, router, user])
 
   const handleRefresh = async () => {
     setIsRefreshing(true)

@@ -18,6 +18,8 @@ import {
   Star,
   Rocket
 } from 'lucide-react'
+import { createClient } from '@/lib/services/supabase/client' // Cambiar a client
+import { useAuth } from '@/hooks/auth/AuthContext'
 
 interface PaymentDetails {
   planId: string
@@ -25,13 +27,13 @@ interface PaymentDetails {
   isAnnual: boolean
   amount: string
   features: string[]
-  icon: any
+  icon: unknown
   color: string
   credits: number
   currency?: string
 }
 
-const PLAN_ICONS: Record<string, { icon: any; color: string }> = {
+const PLAN_ICONS: Record<string, { icon: unknown; color: string }> = {
   starter: {
     icon: Zap,
     color: 'from-blue-500 to-cyan-500'
@@ -55,55 +57,66 @@ export default function PaymentSuccessPage() {
 
   const sessionId = searchParams.get('session_id')
   const planId = searchParams.get('plan') || 'pro'
+  const supabase = createClient() // Remover await
+  const { user } = useAuth()
 
   useEffect(() => {
-    if (!sessionId) {
-      router.push('/dashboard')
-      return
-    }
+    const fetchData = async () => {
+      if (!sessionId) {
+        router.push('/dashboard')
+        return
+      }
 
-    // Verificar pago con Stripe
-    const verifyPayment = async () => {
-      try {
-        const response = await fetch(`/api/payment/verify?session_id=${sessionId}`)
-        const data = await response.json()
+      // Verificar pago con Stripe
+      const verifyPayment = async () => {
+        try {
+          const response = await fetch(`/api/payment/verify?session_id=${sessionId}`)
+          const data = await response.json()
 
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to verify payment')
+          if (!response.ok) {
+            throw new Error(data.error || 'Failed to verify payment')
+          }
+
+          // Obtener icono y color del plan
+          const planConfig = PLAN_ICONS[data.planId] || PLAN_ICONS.pro
+
+          // Crear objeto de detalles del pago
+          const details: PaymentDetails = {
+            planId: data.planId,
+            planName: data.planName,
+            isAnnual: data.isAnnual,
+            amount: `${data.currency} ${data.amount}`,
+            features: data.features,
+            icon: planConfig.icon,
+            color: planConfig.color,
+            credits: data.credits,
+            currency: data.currency
+          }
+
+          setPaymentDetails(details)
+          setIsLoading(false)
+          setShowConfetti(true)
+
+          // Ocultar confetti después de 3 segundos
+          setTimeout(() => setShowConfetti(false), 3000)
+
+        } catch (error) {
+          console.error('Error verifying payment:', error)
+          // En caso de error, redirigir al dashboard
+          router.push('/dashboard?error=payment_verification_failed')
         }
+      }
 
-        // Obtener icono y color del plan
-        const planConfig = PLAN_ICONS[data.planId] || PLAN_ICONS.pro
+      await verifyPayment()
 
-        // Crear objeto de detalles del pago
-        const details: PaymentDetails = {
-          planId: data.planId,
-          planName: data.planName,
-          isAnnual: data.isAnnual,
-          amount: `${data.currency} ${data.amount}`,
-          features: data.features,
-          icon: planConfig.icon,
-          color: planConfig.color,
-          credits: data.credits,
-          currency: data.currency
-        }
-
-        setPaymentDetails(details)
-        setIsLoading(false)
-        setShowConfetti(true)
-
-        // Ocultar confetti después de 3 segundos
-        setTimeout(() => setShowConfetti(false), 3000)
-
-      } catch (error) {
-        console.error('Error verifying payment:', error)
-        // En caso de error, redirigir al dashboard
-        router.push('/dashboard?error=payment_verification_failed')
+      // Actualizar perfil sin await en supabase
+      if (user?.id) {
+        await supabase.from('profiles').update({ subscription_tier: planId }).eq('id', user.id)
       }
     }
 
-    verifyPayment()
-  }, [sessionId, router])
+    fetchData()
+  }, [sessionId, router, planId, user?.id, supabase])
 
   if (isLoading) {
     return (
@@ -134,8 +147,6 @@ export default function PaymentSuccessPage() {
       </div>
     )
   }
-
-  const PlanIcon = paymentDetails.icon
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
@@ -192,7 +203,6 @@ export default function PaymentSuccessPage() {
             <CardContent className="p-8">
               <div className="flex items-center gap-4 mb-6">
                 <div className={`p-3 rounded-2xl bg-gradient-to-r ${paymentDetails.color}`}>
-                  <PlanIcon className="w-8 h-8 text-white" />
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold">{paymentDetails.planName}</h2>
