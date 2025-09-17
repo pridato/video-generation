@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Navbar } from '@/components/layout/navbar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
+import { Select } from '@/components/ui/select'
 import { 
   User, 
   Mic, 
@@ -21,11 +22,14 @@ import {
 } from 'lucide-react'
 
 export default function SettingsPage() {
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [profile, setProfile] = useState({
     fullName: 'Juan Pérez',
     email: 'juan@example.com',
     avatar: ''
   })
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
 
   const [preferences, setPreferences] = useState({
     defaultVoice: 'spanish-female-1',
@@ -89,6 +93,49 @@ export default function SettingsPage() {
     }, 1000)
   }
 
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Validar tipo de archivo
+    if (!file.type.startsWith('image/')) {
+      alert('Solo se permiten archivos de imagen')
+      return
+    }
+
+    // Validar tamaño (2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('El archivo no puede ser mayor a 2MB')
+      return
+    }
+
+    setUploadingAvatar(true)
+
+    try {
+      // Crear preview
+      const previewUrl = URL.createObjectURL(file)
+      setAvatarPreview(previewUrl)
+
+      // Simular upload a Supabase Storage
+      await new Promise(resolve => setTimeout(resolve, 2000))
+
+      // Actualizar profile con la nueva URL del avatar
+      const avatarUrl = `/avatars/${Date.now()}-${file.name}`
+      setProfile(prev => ({ ...prev, avatar: avatarUrl }))
+
+      alert('Avatar actualizado exitosamente')
+    } catch (error) {
+      console.error('Error uploading avatar:', error)
+      alert('Error al subir el avatar')
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click()
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -118,13 +165,40 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center gap-6">
-                <div className="w-20 h-20 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-full flex items-center justify-center text-2xl font-bold">
-                  {profile.fullName.split(' ').map(n => n[0]).join('')}
+                <div className="relative">
+                  <div className="w-20 h-20 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-full flex items-center justify-center text-2xl font-bold overflow-hidden">
+                    {avatarPreview || profile.avatar ? (
+                      <img
+                        src={avatarPreview || profile.avatar}
+                        alt="Avatar"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      profile.fullName.split(' ').map(n => n[0]).join('')
+                    )}
+                  </div>
+                  {uploadingAvatar && (
+                    <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                      <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
                 </div>
                 <div className="flex-1">
-                  <Button variant="outline" className="mb-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarChange}
+                    className="hidden"
+                  />
+                  <Button
+                    variant="outline"
+                    className="mb-2"
+                    onClick={handleAvatarClick}
+                    disabled={uploadingAvatar}
+                  >
                     <Upload className="w-4 h-4 mr-2" />
-                    Cambiar Avatar
+                    {uploadingAvatar ? 'Subiendo...' : 'Cambiar Avatar'}
                   </Button>
                   <p className="text-xs text-muted-foreground">
                     JPG, PNG o GIF. Máximo 2MB.
@@ -183,45 +257,42 @@ export default function SettingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Voz Predeterminada</label>
-                  <select
+                  <Select
                     value={preferences.defaultVoice}
                     onChange={(e) => setPreferences({...preferences, defaultVoice: e.target.value})}
-                    className="w-full px-3 py-2 border border-border rounded-lg bg-input text-foreground"
-                  >
-                    {voices.map(voice => (
-                      <option key={voice.id} value={voice.id}>
-                        {voice.name}
-                      </option>
-                    ))}
-                  </select>
+                    variant="creator"
+                    options={voices.map(voice => ({
+                      value: voice.id,
+                      label: voice.name
+                    }))}
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Plantilla Predeterminada</label>
-                  <select
+                  <Select
                     value={preferences.defaultTemplate}
                     onChange={(e) => setPreferences({...preferences, defaultTemplate: e.target.value})}
-                    className="w-full px-3 py-2 border border-border rounded-lg bg-input text-foreground"
-                  >
-                    {templates.map(template => (
-                      <option key={template.id} value={template.id}>
-                        {template.name}
-                      </option>
-                    ))}
-                  </select>
+                    variant="creator"
+                    options={templates.map(template => ({
+                      value: template.id,
+                      label: template.name
+                    }))}
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Calidad Predeterminada</label>
-                  <select
+                  <Select
                     value={preferences.defaultQuality}
                     onChange={(e) => setPreferences({...preferences, defaultQuality: e.target.value})}
-                    className="w-full px-3 py-2 border border-border rounded-lg bg-input text-foreground"
-                  >
-                    <option value="720p">720p</option>
-                    <option value="1080p">1080p (Recomendado)</option>
-                    <option value="4k">4K (Solo PRO)</option>
-                  </select>
+                    variant="creator"
+                    options={[
+                      { value: '720p', label: '720p' },
+                      { value: '1080p', label: '1080p (Recomendado)' },
+                      { value: '4k', label: '4K (Solo PRO)' }
+                    ]}
+                  />
                 </div>
               </div>
 

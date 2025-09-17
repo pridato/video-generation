@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ROUTES } from '@/lib/constants'
 import { Button } from '@/components/ui/button'
-import { Play, BarChart3, DollarSign, User, LogOut, Sparkles, Plus, Video, Settings } from 'lucide-react'
+import { Play, BarChart3, DollarSign, User, LogOut, Sparkles, Plus, Video, Settings, Zap, Library, Wand2 } from 'lucide-react'
 
 export function Navbar() {
   const router = useRouter()
@@ -32,12 +32,12 @@ export function Navbar() {
           </div>
           
           <div className="flex items-center space-x-6">
-            <Link 
+            <Link
               href={ROUTES.CREATE}
-              className="flex items-center space-x-2 bg-primary/10 text-primary px-3 py-2 rounded-lg hover:bg-primary/20 transition-colors"
+              className="flex items-center space-x-2 bg-gradient-to-r from-primary to-secondary text-white px-4 py-2 rounded-xl hover:shadow-lg hover:shadow-primary/25 transition-all duration-200 font-medium"
             >
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline font-medium">Crear</span>
+              <Wand2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Crear Video</span>
             </Link>
             <Link 
               href={ROUTES.DASHBOARD}
@@ -46,11 +46,11 @@ export function Navbar() {
               <BarChart3 className="w-4 h-4" />
               <span className="hidden sm:inline">Dashboard</span>
             </Link>
-            <Link 
+            <Link
               href={ROUTES.LIBRARY}
               className="flex items-center space-x-2 text-muted-foreground hover:text-foreground transition-colors"
             >
-              <Video className="w-4 h-4" />
+              <Library className="w-4 h-4" />
               <span className="hidden sm:inline">Biblioteca</span>
             </Link>
             <Link 
@@ -69,9 +69,9 @@ export function Navbar() {
             </Link>
             
             {/* Credits indicator */}
-            <div className="hidden sm:flex items-center space-x-2 bg-accent/10 text-accent px-3 py-1 rounded-full text-sm">
-              <Sparkles className="w-3 h-3" />
-              <span>5 credits</span>
+            <div className="hidden sm:flex items-center space-x-2 bg-gradient-to-r from-accent/10 to-accent/5 border border-accent/20 text-accent px-3 py-1.5 rounded-full text-sm font-medium">
+              <Zap className="w-3 h-3" />
+              <span>5 créditos</span>
             </div>
             
             <Button

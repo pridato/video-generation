@@ -3,14 +3,15 @@
 import { useState } from 'react'
 import { Navbar } from '@/components/layout/navbar'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { 
-  Play, 
-  Download, 
-  Share2, 
-  Trash2, 
-  Filter, 
+import { Select } from '@/components/ui/select'
+import { ClientNumber } from '@/components/ui/client-number'
+import {
+  Play,
+  Download,
+  Share2,
+  Trash2,
   Search,
   Clock,
   CheckCircle,
@@ -18,80 +19,18 @@ import {
   Plus,
   Grid3X3,
   List,
+  Eye,
   Calendar,
-  Eye
+  Zap,
+  TrendingUp,
+  Timer
 } from 'lucide-react'
-
-type VideoStatus = 'processing' | 'completed' | 'failed'
-
-interface Video {
-  id: string
-  title: string
-  thumbnail: string
-  duration: number
-  status: VideoStatus
-  createdAt: string
-  template: string
-  views?: number
-  downloadUrl?: string
-}
-
-// Datos de ejemplo
-const MOCK_VIDEOS: Video[] = [
-  {
-    id: '1',
-    title: 'React Hooks Explicados',
-    thumbnail: '🖥️',
-    duration: 45,
-    status: 'completed',
-    createdAt: '2024-01-15',
-    template: 'Tutorial Tecnológico',
-    views: 1250,
-    downloadUrl: '/videos/react-hooks.mp4'
-  },
-  {
-    id: '2',
-    title: '5 Trucos de JavaScript',
-    thumbnail: '⚡',
-    duration: 38,
-    status: 'completed',
-    createdAt: '2024-01-12',
-    template: 'Datos Virales',
-    views: 3800,
-    downloadUrl: '/videos/js-tricks.mp4'
-  },
-  {
-    id: '3',
-    title: 'Consejos para Programadores',
-    thumbnail: '💡',
-    duration: 52,
-    status: 'completed',
-    createdAt: '2024-01-10',
-    template: 'Consejos de Vida',
-    views: 890,
-    downloadUrl: '/videos/dev-tips.mp4'
-  },
-  {
-    id: '4',
-    title: 'Tutorial de Next.js',
-    thumbnail: '🚀',
-    duration: 0,
-    status: 'processing',
-    createdAt: '2024-01-16',
-    template: 'Tutorial Tecnológico'
-  },
-  {
-    id: '5',
-    title: 'TypeScript para Principiantes',
-    thumbnail: '❌',
-    duration: 0,
-    status: 'failed',
-    createdAt: '2024-01-14',
-    template: 'Tutorial Tecnológico'
-  }
-]
+import { MOCK_VIDEOS, Video } from '@/lib/data/videos'
+import type { VideoStatus } from '@/lib/data/videos'
+import { useRouter } from 'next/navigation'
 
 export default function LibraryPage() {
+  const router = useRouter()
   const [videos, setVideos] = useState<Video[]>(MOCK_VIDEOS)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<VideoStatus | 'all'>('all')
@@ -108,7 +47,7 @@ export default function LibraryPage() {
       case 'completed':
         return <CheckCircle className="w-4 h-4 text-success" />
       case 'processing':
-        return <Clock className="w-4 h-4 text-primary ai-working" />
+        return <Clock className="w-4 h-4 text-primary animate-pulse" />
       case 'failed':
         return <AlertCircle className="w-4 h-4 text-destructive" />
     }
@@ -122,6 +61,18 @@ export default function LibraryPage() {
         return 'Procesando'
       case 'failed':
         return 'Error'
+    }
+  }
+
+  const getStatusBadge = (status: VideoStatus) => {
+    const baseClasses = "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
+    switch (status) {
+      case 'completed':
+        return `${baseClasses} bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400`
+      case 'processing':
+        return `${baseClasses} bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400`
+      case 'failed':
+        return `${baseClasses} bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400`
     }
   }
 
@@ -144,54 +95,129 @@ export default function LibraryPage() {
     setVideos(videos.filter(v => v.id !== videoId))
   }
 
+  const handleCreateVideo = () => {
+    // desplazar a la página de creación de video
+    router.push('/create')
+  }
+
+  // Stats calculations
+  const completedVideos = videos.filter(v => v.status === 'completed').length
+  const processingVideos = videos.filter(v => v.status === 'processing').length
+  const totalViews = videos.reduce((acc, v) => acc + (v.views || 0), 0)
+  const totalMinutes = Math.floor(videos.filter(v => v.status === 'completed').reduce((acc, v) => acc + v.duration, 0) / 60)
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
+
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        {/* Header */}
+        {/* Header with Stats */}
         <div className="mb-8">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              <h1 className="text-3xl font-bold text-foreground">
                 Mi Biblioteca
               </h1>
-              <p className="text-muted-foreground mt-2">
+              <p className="text-muted-foreground mt-1">
                 Gestiona todos tus videos generados
               </p>
             </div>
-            <Button className="btn-primary">
+            <Button onClick={handleCreateVideo} className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-white shadow-lg hover:shadow-xl transition-all duration-200">
               <Plus className="w-4 h-4 mr-2" />
               Crear Video
             </Button>
           </div>
+
+          {/* Quick Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/50 dark:to-cyan-950/50 border-blue-200 dark:border-blue-800">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-blue-600 dark:text-blue-400 text-sm font-medium">Videos</p>
+                    <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">{completedVideos}</p>
+                  </div>
+                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/50 rounded-lg flex items-center justify-center">
+                    <Play className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/50 dark:to-emerald-950/50 border-green-200 dark:border-green-800">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-green-600 dark:text-green-400 text-sm font-medium">Visualizaciones</p>
+                    <p className="text-2xl font-bold text-green-900 dark:text-green-100">
+                      <ClientNumber value={totalViews} />
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 bg-green-100 dark:bg-green-900/50 rounded-lg flex items-center justify-center">
+                    <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/50 dark:to-amber-950/50 border-orange-200 dark:border-orange-800">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-orange-600 dark:text-orange-400 text-sm font-medium">Procesando</p>
+                    <p className="text-2xl font-bold text-orange-900 dark:text-orange-100">{processingVideos}</p>
+                  </div>
+                  <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/50 rounded-lg flex items-center justify-center">
+                    <Zap className="w-5 h-5 text-orange-600 dark:text-orange-400 animate-pulse" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/50 dark:to-pink-950/50 border-purple-200 dark:border-purple-800">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-purple-600 dark:text-purple-400 text-sm font-medium">Minutos</p>
+                    <p className="text-2xl font-bold text-purple-900 dark:text-purple-100">{totalMinutes}</p>
+                  </div>
+                  <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/50 rounded-lg flex items-center justify-center">
+                    <Timer className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         {/* Filters and Search */}
-        <Card className="card-glow mb-6">
+        <Card className="mb-6 border-0 shadow-sm bg-card/50 backdrop-blur-sm">
           <CardContent className="p-6">
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
               <div className="flex items-center gap-4 w-full sm:w-auto">
-                <div className="relative flex-1 sm:w-64">
+                <div className="relative flex-1 sm:w-80">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
                     placeholder="Buscar videos..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 border-0 bg-muted/30 focus:bg-background transition-colors"
                   />
                 </div>
-                
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as VideoStatus | 'all')}
-                  className="px-3 py-2 border border-border rounded-lg bg-input text-foreground"
-                >
-                  <option value="all">Todos los estados</option>
-                  <option value="completed">Completados</option>
-                  <option value="processing">Procesando</option>
-                  <option value="failed">Con errores</option>
-                </select>
+
+                <div className="min-w-fit">
+                  <Select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value as VideoStatus | 'all')}
+                    variant="creator"
+                    options={[
+                      { value: 'all', label: 'Todos los estados' },
+                      { value: 'completed', label: 'Completados' },
+                      { value: 'processing', label: 'Procesando' },
+                      { value: 'failed', label: 'Con errores' }
+                    ]}
+                  />
+                </div>
               </div>
 
               <div className="flex items-center gap-2">
@@ -199,6 +225,7 @@ export default function LibraryPage() {
                   variant={viewMode === 'grid' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setViewMode('grid')}
+                  className="w-9 h-9 p-0"
                 >
                   <Grid3X3 className="w-4 h-4" />
                 </Button>
@@ -206,6 +233,7 @@ export default function LibraryPage() {
                   variant={viewMode === 'list' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setViewMode('list')}
+                  className="w-9 h-9 p-0"
                 >
                   <List className="w-4 h-4" />
                 </Button>
@@ -216,20 +244,20 @@ export default function LibraryPage() {
 
         {/* Videos Grid/List */}
         {filteredVideos.length === 0 ? (
-          <Card className="card-glow">
-            <CardContent className="p-12 text-center">
-              <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                <Play className="w-8 h-8 text-muted-foreground" />
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-16 text-center">
+              <div className="w-20 h-20 bg-gradient-to-br from-muted to-muted/50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <Play className="w-10 h-10 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">No hay videos</h3>
-              <p className="text-muted-foreground mb-4">
-                {searchQuery || statusFilter !== 'all' 
+              <h3 className="text-xl font-semibold mb-3">No hay videos</h3>
+              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                {searchQuery || statusFilter !== 'all'
                   ? 'No se encontraron videos que coincidan con los filtros'
                   : 'Aún no has creado ningún video. ¡Comienza ahora!'
                 }
               </p>
               {!searchQuery && statusFilter === 'all' && (
-                <Button className="btn-primary">
+                <Button className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-white">
                   <Plus className="w-4 h-4 mr-2" />
                   Crear tu Primer Video
                 </Button>
@@ -239,50 +267,60 @@ export default function LibraryPage() {
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredVideos.map((video) => (
-              <Card key={video.id} className="card-glow overflow-hidden">
-                <div className="aspect-[9/16] bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center text-4xl relative">
+              <Card
+                key={video.id}
+                className="group overflow-hidden border-0 shadow-sm hover:shadow-lg transition-all duration-200 bg-card/50 backdrop-blur-sm"
+              >
+                <div className="aspect-[9/16] bg-gradient-to-br from-muted/30 to-muted/10 flex items-center justify-center text-4xl relative overflow-hidden">
                   {video.thumbnail}
                   {video.status === 'completed' && (
                     <Button
                       size="sm"
-                      className="absolute top-2 right-2 w-8 h-8 p-0 bg-black/50 hover:bg-black/70"
+                      className="absolute inset-0 w-full h-full bg-black/0 hover:bg-black/20 border-0 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                     >
-                      <Play className="w-3 h-3 text-white" />
+                      <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center">
+                        <Play className="w-5 h-5 text-black ml-0.5" fill="currentColor" />
+                      </div>
                     </Button>
                   )}
-                  <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                  <div className="absolute top-3 left-3">
+                    <div className={getStatusBadge(video.status)}>
+                      {getStatusIcon(video.status)}
+                      {getStatusText(video.status)}
+                    </div>
+                  </div>
+                  <div className="absolute bottom-3 right-3 bg-black/70 text-white text-xs px-2 py-1 rounded-md font-medium">
                     {formatDuration(video.duration)}
                   </div>
                 </div>
-                
+
                 <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-semibold text-sm line-clamp-2 flex-1">
+                  <div className="mb-3">
+                    <h3 className="font-semibold text-sm line-clamp-2 mb-1">
                       {video.title}
                     </h3>
-                    {getStatusIcon(video.status)}
-                  </div>
-                  
-                  <div className="space-y-1 text-xs text-muted-foreground mb-3">
-                    <p>{video.template}</p>
-                    <p>{formatDate(video.createdAt)}</p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>{video.template}</span>
+                      <span>•</span>
+                      <span>{formatDate(video.createdAt)}</span>
+                    </div>
                     {video.views && (
-                      <p className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                         <Eye className="w-3 h-3" />
-                        {video.views.toLocaleString()} visualizaciones
-                      </p>
+                        <ClientNumber value={video.views} />
+                      </div>
                     )}
                   </div>
-                  
-                  <div className="flex gap-2">
+
+                  <div className="flex gap-1">
                     {video.status === 'completed' && video.downloadUrl && (
-                      <Button size="sm" variant="outline" className="flex-1">
+                      <Button size="sm" variant="outline" className="flex-1 h-8 text-xs">
                         <Download className="w-3 h-3 mr-1" />
                         Descargar
                       </Button>
                     )}
                     {video.status === 'failed' && (
-                      <Button size="sm" variant="outline" className="flex-1">
+                      <Button size="sm" variant="outline" className="flex-1 h-8 text-xs">
                         Reintentar
                       </Button>
                     )}
@@ -290,7 +328,7 @@ export default function LibraryPage() {
                       size="sm"
                       variant="outline"
                       onClick={() => handleDelete(video.id)}
-                      className="text-destructive hover:text-destructive"
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                     >
                       <Trash2 className="w-3 h-3" />
                     </Button>
@@ -300,53 +338,67 @@ export default function LibraryPage() {
             ))}
           </div>
         ) : (
-          <Card className="card-glow">
+          <Card className="border-0 shadow-sm">
             <CardContent className="p-0">
-              <div className="divide-y divide-border">
+              <div className="divide-y divide-border/50">
                 {filteredVideos.map((video) => (
-                  <div key={video.id} className="p-4 hover:bg-accent/5 transition-colors">
+                  <div
+                    key={video.id}
+                    className="p-4 hover:bg-accent/5 transition-colors group"
+                  >
                     <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-lg flex items-center justify-center text-xl">
+                      <div className="w-20 h-20 bg-gradient-to-br from-muted/30 to-muted/10 rounded-xl flex items-center justify-center text-xl relative overflow-hidden">
                         {video.thumbnail}
+                        {video.status === 'completed' && (
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                            <Play className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                        )}
                       </div>
-                      
+
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold truncate">{video.title}</h3>
-                          {getStatusIcon(video.status)}
-                          <span className="text-xs text-muted-foreground">
+                        <div className="flex items-start justify-between mb-2">
+                          <h3 className="font-semibold truncate pr-2">{video.title}</h3>
+                          <div className={getStatusBadge(video.status)}>
+                            {getStatusIcon(video.status)}
                             {getStatusText(video.status)}
-                          </span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {formatDate(video.createdAt)}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Timer className="w-3 h-3" />
+                            {formatDuration(video.duration)}
+                          </span>
                           <span>{video.template}</span>
-                          <span>{formatDate(video.createdAt)}</span>
-                          <span>{formatDuration(video.duration)}</span>
                           {video.views && (
                             <span className="flex items-center gap-1">
                               <Eye className="w-3 h-3" />
-                              {video.views.toLocaleString()}
+                              <ClientNumber value={video.views} />
                             </span>
                           )}
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center gap-2">
                         {video.status === 'completed' && (
                           <>
-                            <Button size="sm" variant="outline">
+                            <Button size="sm" variant="outline" className="h-8 w-8 p-0">
                               <Play className="w-3 h-3" />
                             </Button>
-                            <Button size="sm" variant="outline">
+                            <Button size="sm" variant="outline" className="h-8 w-8 p-0">
                               <Download className="w-3 h-3" />
                             </Button>
-                            <Button size="sm" variant="outline">
+                            <Button size="sm" variant="outline" className="h-8 w-8 p-0">
                               <Share2 className="w-3 h-3" />
                             </Button>
                           </>
                         )}
                         {video.status === 'failed' && (
-                          <Button size="sm" variant="outline">
+                          <Button size="sm" variant="outline" className="h-8">
                             Reintentar
                           </Button>
                         )}
@@ -354,7 +406,7 @@ export default function LibraryPage() {
                           size="sm"
                           variant="outline"
                           onClick={() => handleDelete(video.id)}
-                          className="text-destructive hover:text-destructive"
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                         >
                           <Trash2 className="w-3 h-3" />
                         </Button>
@@ -366,45 +418,6 @@ export default function LibraryPage() {
             </CardContent>
           </Card>
         )}
-
-        {/* Stats */}
-        <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="card-glow">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-primary mb-1">
-                {videos.filter(v => v.status === 'completed').length}
-              </div>
-              <div className="text-xs text-muted-foreground">Completados</div>
-            </CardContent>
-          </Card>
-          
-          <Card className="card-glow">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-accent mb-1">
-                {videos.filter(v => v.status === 'processing').length}
-              </div>
-              <div className="text-xs text-muted-foreground">Procesando</div>
-            </CardContent>
-          </Card>
-          
-          <Card className="card-glow">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-secondary mb-1">
-                {videos.reduce((acc, v) => acc + (v.views || 0), 0).toLocaleString()}
-              </div>
-              <div className="text-xs text-muted-foreground">Visualizaciones</div>
-            </CardContent>
-          </Card>
-          
-          <Card className="card-glow">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-success mb-1">
-                {Math.floor(videos.filter(v => v.status === 'completed').reduce((acc, v) => acc + v.duration, 0) / 60)}
-              </div>
-              <div className="text-xs text-muted-foreground">Minutos creados</div>
-            </CardContent>
-          </Card>
-        </div>
       </main>
     </div>
   )
