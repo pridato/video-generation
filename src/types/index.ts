@@ -1,4 +1,8 @@
 // Database types
+
+/**
+ * Interfaz que define la estructura de un usuario en la base de datos.
+ */
 export interface User {
   id: string
   email: string
@@ -10,6 +14,9 @@ export interface User {
   credits_remaining?: number
 }
 
+/**
+ * Interfaz que define la estructura de un proyecto de video en la base de datos.
+ */
 export interface VideoProject {
   id: string
   user_id: string
@@ -24,6 +31,9 @@ export interface VideoProject {
   updated_at: string
 }
 
+/**
+ * Interfaz que define la configuración de un video.
+ */
 export interface VideoSettings {
   resolution: '720p' | '1080p' | '4k'
   fps: 24 | 30 | 60
@@ -32,7 +42,7 @@ export interface VideoSettings {
 }
 
 // API Response types
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data?: T
   error?: string
   message?: string
@@ -44,6 +54,7 @@ export interface LoginForm {
   password: string
 }
 
+// Signup form extends login form with additional fields
 export interface SignupForm extends LoginForm {
   fullName: string
   confirmPassword: string
@@ -58,3 +69,6 @@ export interface SubscriptionPlan {
   features: string[]
   credits_per_month: number
 }
+
+
+

@@ -1,194 +1,164 @@
--- YouTube Shorts Generator SaaS Database Schema
--- Based on memory specifications
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
 
--- Drop existing tables if they exist
-DROP TABLE IF EXISTS public.video_projects CASCADE;
-DROP TABLE IF EXISTS public.profiles CASCADE;
-
--- Update profiles table for YouTube Shorts SaaS
-CREATE TABLE public.profiles (
-  id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL PRIMARY KEY,
-  email TEXT UNIQUE NOT NULL,
-  full_name TEXT,
-  avatar_url TEXT,
-  subscription_tier TEXT DEFAULT 'free' CHECK (subscription_tier IN ('free', 'pro', 'enterprise')),
-  usage_count INTEGER DEFAULT 0,
-  credits_remaining INTEGER DEFAULT 5,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
--- Videos table for generated YouTube Shorts
-CREATE TABLE public.videos (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
-  title TEXT NOT NULL,
-  script TEXT NOT NULL,
-  template_id TEXT NOT NULL,
-  voice_id TEXT,
-  status TEXT DEFAULT 'processing' CHECK (status IN ('processing', 'completed', 'failed')),
-  video_url TEXT,
-  thumbnail_url TEXT,
-  duration INTEGER, -- en segundos
-  settings JSONB DEFAULT '{}',
-  analytics JSONB DEFAULT '{}',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
--- Templates table for video templates
-CREATE TABLE public.templates (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  description TEXT,
-  category TEXT NOT NULL,
-  preview_url TEXT,
-  is_premium BOOLEAN DEFAULT false,
-  settings JSONB DEFAULT '{}',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
--- Usage analytics table (for premium users)
 CREATE TABLE public.analytics (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  video_id UUID REFERENCES public.videos(id) ON DELETE CASCADE NOT NULL,
-  views INTEGER DEFAULT 0,
-  engagement_rate DECIMAL(5,2),
-  completion_rate DECIMAL(5,2),
-  performance_score INTEGER,
-  tracked_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  video_id uuid NOT NULL,
+  views integer DEFAULT 0,
+  engagement_rate numeric,
+  completion_rate numeric,
+  performance_score integer,
+  tracked_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  platform text,
+  likes integer DEFAULT 0,
+  shares integer DEFAULT 0,
+  comments integer DEFAULT 0,
+  watch_time_seconds integer,
+  click_through_rate numeric,
+  audience_retention jsonb DEFAULT '{}'::jsonb,
+  tracked_date date NOT NULL DEFAULT CURRENT_DATE,
+  CONSTRAINT analytics_pkey PRIMARY KEY (id),
+  CONSTRAINT analytics_video_id_fkey FOREIGN KEY (video_id) REFERENCES public.videos(id)
 );
-
--- AI Processing Queue table
+CREATE TABLE public.asset_clips (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  filename text NOT NULL,
+  file_url text NOT NULL,
+  file_size integer,
+  duration real NOT NULL,
+  resolution text DEFAULT '1920x1080'::text,
+  format text DEFAULT 'mp4'::text,
+  concept_tags ARRAY DEFAULT '{}'::text[],
+  emotion_tags ARRAY DEFAULT '{}'::text[],
+  scene_type text,
+  dominant_colors ARRAY DEFAULT '{}'::text[],
+  description text,
+  keywords ARRAY DEFAULT '{}'::text[],
+  embedding USER-DEFINED,
+  quality_score real DEFAULT 5.0 CHECK (quality_score >= 1::double precision AND quality_score <= 10::double precision),
+  motion_intensity text DEFAULT 'medium'::text CHECK (motion_intensity = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text])),
+  audio_present boolean DEFAULT false,
+  usage_count integer DEFAULT 0,
+  success_rate real DEFAULT 0.0 CHECK (success_rate >= 0::double precision AND success_rate <= 1::double precision),
+  processing_status text DEFAULT 'ready'::text CHECK (processing_status = ANY (ARRAY['processing'::text, 'ready'::text, 'failed'::text])),
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT asset_clips_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.processing_queue (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  video_id UUID REFERENCES public.videos(id) ON DELETE CASCADE NOT NULL,
-  step TEXT NOT NULL, -- 'script_enhancement', 'voice_generation', 'video_assembly'
-  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
-  progress INTEGER DEFAULT 0,
-  error_message TEXT,
-  started_at TIMESTAMP WITH TIME ZONE,
-  completed_at TIMESTAMP WITH TIME ZONE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  video_id uuid NOT NULL,
+  step text NOT NULL,
+  status text DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'processing'::text, 'completed'::text, 'failed'::text])),
+  progress integer DEFAULT 0,
+  error_message text,
+  started_at timestamp with time zone,
+  completed_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  user_id uuid,
+  steps jsonb DEFAULT '[]'::jsonb,
+  current_step text,
+  priority integer DEFAULT 5,
+  estimated_completion timestamp with time zone,
+  retry_count integer DEFAULT 0,
+  max_retries integer DEFAULT 3,
+  processing_node text,
+  CONSTRAINT processing_queue_pkey PRIMARY KEY (id),
+  CONSTRAINT processing_queue_video_id_fkey FOREIGN KEY (video_id) REFERENCES public.videos(id),
+  CONSTRAINT processing_queue_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
 );
-
--- RLS Policies
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.videos ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.templates ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.analytics ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.processing_queue ENABLE ROW LEVEL SECURITY;
-
--- Profiles policies
-CREATE POLICY "Public profiles are viewable by everyone" ON profiles
-  FOR SELECT USING (true);
-
-CREATE POLICY "Users can insert their own profile" ON profiles
-  FOR INSERT WITH CHECK (auth.uid() = id);
-
-CREATE POLICY "Users can update own profile" ON profiles
-  FOR UPDATE USING (auth.uid() = id);
-
--- Videos policies
-CREATE POLICY "Users can view own videos" ON videos
-  FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert own videos" ON videos
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own videos" ON videos
-  FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete own videos" ON videos
-  FOR DELETE USING (auth.uid() = user_id);
-
--- Templates policies (public read, admin write)
-CREATE POLICY "Templates are viewable by everyone" ON templates
-  FOR SELECT USING (true);
-
--- Analytics policies
-CREATE POLICY "Users can view analytics for own videos" ON analytics
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM videos 
-      WHERE videos.id = analytics.video_id 
-      AND videos.user_id = auth.uid()
-    )
-  );
-
--- Processing queue policies
-CREATE POLICY "Users can view processing status for own videos" ON processing_queue
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM videos 
-      WHERE videos.id = processing_queue.video_id 
-      AND videos.user_id = auth.uid()
-    )
-  );
-
--- Indexes for performance
-CREATE INDEX idx_videos_user_id ON videos(user_id);
-CREATE INDEX idx_videos_status ON videos(status);
-CREATE INDEX idx_videos_created_at ON videos(created_at DESC);
-CREATE INDEX idx_templates_category ON templates(category);
-CREATE INDEX idx_templates_is_premium ON templates(is_premium);
-CREATE INDEX idx_analytics_video_id ON analytics(video_id);
-CREATE INDEX idx_processing_queue_video_id ON processing_queue(video_id);
-CREATE INDEX idx_processing_queue_status ON processing_queue(status);
-
--- Functions for automatic profile creation
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO public.profiles (id, email, full_name)
-  VALUES (
-    NEW.id,
-    NEW.email,
-    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name')
-  );
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Trigger for automatic profile creation
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-
--- Function to update updated_at timestamp
-CREATE OR REPLACE FUNCTION public.update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = timezone('utc'::text, now());
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Triggers for updated_at
-CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON profiles
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_videos_updated_at BEFORE UPDATE ON videos
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- Insert sample templates
-INSERT INTO public.templates (id, name, description, category, is_premium) VALUES
-('tech-tutorial', 'Tech Tutorial', 'Perfect for coding tutorials and tech explanations', 'education', false),
-('viral-facts', 'Viral Facts', 'Engaging format for interesting facts and trivia', 'entertainment', false),
-('life-tips', 'Life Tips', 'Motivational and self-improvement content', 'lifestyle', false),
-('news-update', 'News Update', 'Professional news and updates format', 'news', true),
-('product-review', 'Product Review', 'Comprehensive product review template', 'review', true),
-('story-time', 'Story Time', 'Narrative storytelling with engaging visuals', 'entertainment', true),
-('code-to-video', 'Code to Video', 'Transform code explanations into videos (AI-powered)', 'education', true);
-
--- Sample data for development
-INSERT INTO public.profiles (id, email, full_name, subscription_tier, usage_count, credits_remaining) 
-SELECT 
-  gen_random_uuid(),
-  'demo@example.com',
-  'Demo User',
-  'pro',
-  15,
-  85
-WHERE NOT EXISTS (SELECT 1 FROM public.profiles WHERE email = 'demo@example.com');
+CREATE TABLE public.profiles (
+  id uuid NOT NULL,
+  email text NOT NULL UNIQUE,
+  full_name text,
+  avatar_url text,
+  subscription_tier text DEFAULT 'free'::text CHECK (subscription_tier = ANY (ARRAY['free'::text, 'pro'::text, 'enterprise'::text])),
+  monthly_limit integer DEFAULT 5,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  stripe_customer_id text,
+  subscription_status text DEFAULT 'inactive'::text,
+  monthly_videos_used integer DEFAULT 0,
+  total_videos_created integer DEFAULT 0,
+  content_niche text,
+  target_audience text,
+  preferred_language text DEFAULT 'es'::text,
+  last_video_created_at timestamp with time zone,
+  brand_colors jsonb DEFAULT '{}'::jsonb,
+  CONSTRAINT profiles_pkey PRIMARY KEY (id),
+  CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.templates (
+  id text NOT NULL,
+  name text NOT NULL,
+  description text,
+  category text,
+  preview_url text,
+  is_premium boolean DEFAULT false,
+  likes integer DEFAULT 0,
+  uses integer DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  structure jsonb DEFAULT '{}'::jsonb,
+  visual_settings jsonb DEFAULT '{}'::jsonb,
+  audio_settings jsonb DEFAULT '{}'::jsonb,
+  target_duration integer DEFAULT 45,
+  difficulty_level text DEFAULT 'beginner'::text,
+  viral_potential_score integer DEFAULT 50,
+  is_active boolean DEFAULT true,
+  CONSTRAINT templates_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.user_preferences (
+  user_id uuid NOT NULL,
+  default_template_id text,
+  default_voice_id text,
+  auto_enhance_script boolean DEFAULT true,
+  preferred_video_length integer DEFAULT 45,
+  brand_kit jsonb DEFAULT '{}'::jsonb,
+  watermark_enabled boolean DEFAULT true,
+  watermark_position text DEFAULT 'bottom-right'::text,
+  background_music_enabled boolean DEFAULT true,
+  sound_effects_enabled boolean DEFAULT true,
+  voice_speed real DEFAULT 1.0,
+  email_notifications boolean DEFAULT true,
+  processing_complete_notifications boolean DEFAULT true,
+  weekly_digest boolean DEFAULT true,
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT user_preferences_pkey PRIMARY KEY (user_id),
+  CONSTRAINT user_preferences_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id),
+  CONSTRAINT user_preferences_default_template_id_fkey FOREIGN KEY (default_template_id) REFERENCES public.templates(id)
+);
+CREATE TABLE public.videos (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  title text NOT NULL,
+  script text NOT NULL,
+  template_id text NOT NULL,
+  voice_id text,
+  status text DEFAULT 'processing'::text CHECK (status = ANY (ARRAY['queued'::text, 'processing'::text, 'completed'::text, 'failed'::text, 'cancelled'::text])),
+  video_url text,
+  thumbnail_url text,
+  duration integer,
+  settings jsonb DEFAULT '{}'::jsonb,
+  analytics jsonb DEFAULT '{}'::jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  enhanced_script jsonb,
+  final_script text,
+  clips_used jsonb DEFAULT '[]'::jsonb,
+  voice_settings jsonb DEFAULT '{}'::jsonb,
+  background_music text,
+  sound_effects ARRAY DEFAULT '{}'::text[],
+  actual_duration real,
+  file_size integer,
+  processing_time integer,
+  quality_score real,
+  subtitles_url text,
+  error_message text,
+  retry_count integer DEFAULT 0,
+  download_count integer DEFAULT 0,
+  share_count integer DEFAULT 0,
+  CONSTRAINT videos_pkey PRIMARY KEY (id),
+  CONSTRAINT videos_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
+);
