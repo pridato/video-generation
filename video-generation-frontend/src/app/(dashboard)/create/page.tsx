@@ -32,6 +32,36 @@ const STEPS = [
   { id: 5, name: 'Generar', icon: Clapperboard, description: 'Crear video' }
 ]
 
+// Categorías disponibles
+const CATEGORIAS = [
+  { id: 'tech', name: 'Tecnología', emoji: '💻' },
+  { id: 'marketing', name: 'Marketing', emoji: '📈' },
+  { id: 'education', name: 'Educación', emoji: '🎓' },
+  { id: 'entertainment', name: 'Entretenimiento', emoji: '🎬' },
+  { id: 'lifestyle', name: 'Estilo de Vida', emoji: '✨' },
+  { id: 'business', name: 'Negocios', emoji: '💼' },
+  { id: 'fitness', name: 'Fitness', emoji: '💪' },
+  { id: 'food', name: 'Comida', emoji: '🍳' },
+  { id: 'travel', name: 'Viajes', emoji: '✈️' },
+  { id: 'news', name: 'Noticias', emoji: '📰' }
+]
+
+interface Segmento {
+  texto: string;
+  duracion: number;
+  tipo: string; // ej: "hook" | "contenido" | "cta"
+}
+
+interface ScriptResponse {
+  script_mejorado: string;
+  duracion_estimada: number;
+  segmentos: Segmento[];
+  palabras_clave: string[];
+  tono: string;
+  mejoras_aplicadas: string[];
+}
+
+// Template and Voice definitions
 const TEMPLATES = [
   {
     id: 'tech-tutorial',
@@ -69,37 +99,41 @@ const TEMPLATES = [
 
 const VOICES = [
   {
-    id: 'spanish-male-1',
-    name: 'Carlos',
-    gender: 'Masculina',
-    description: 'Voz profesional y clara',
+    id: 'alloy',
+    name: 'Alexa',
+    gender: 'Neutral',
+    description: 'Voz equilibrada y versátil, perfecta para cualquier contenido',
     premium: false,
-    preview: '/audio/carlos-preview.mp3'
+    openaiVoice: 'alloy',
+    preview: '/audio/alloy-preview.mp3'
   },
   {
-    id: 'spanish-female-1',
-    name: 'María',
-    gender: 'Femenina',
-    description: 'Tono cálido y amigable',
-    premium: false,
-    preview: '/audio/maria-preview.mp3'
-  },
-  {
-    id: 'spanish-male-pro',
-    name: 'Alejandro Pro',
+    id: 'echo',
+    name: 'Eco',
     gender: 'Masculina',
-    description: 'Voz de locutor profesional con IA',
-    premium: true,
-    preview: '/audio/alejandro-preview.mp3'
+    description: 'Voz masculina clara y profesional',
+    premium: false,
+    openaiVoice: 'echo',
+    preview: '/audio/echo-preview.mp3'
   },
   {
-    id: 'spanish-female-pro',
-    name: 'Sofia Pro',
-    gender: 'Femenina',
-    description: 'Voz ultra-realista con emoción',
-    premium: true,
-    preview: '/audio/sofia-preview.mp3'
-  }
+    id: 'fable',
+    name: 'Fábula',
+    gender: 'Masculina',
+    description: 'Voz narrativa cálida, ideal para storytelling',
+    premium: false,
+    openaiVoice: 'fable',
+    preview: '/audio/fable-preview.mp3'
+  },
+  {
+    id: 'onyx',
+    name: 'Ónix',
+    gender: 'Masculina',
+    description: 'Voz profunda y autoritaria, perfecta para contenido serio',
+    premium: false,
+    openaiVoice: 'onyx',
+    preview: '/audio/onyx-preview.mp3'
+  },
 ]
 
 const SCRIPT_PLACEHOLDERS = [
@@ -115,7 +149,9 @@ export default function CreatePage() {
   const { success, error } = useToast()
   const [currentStep, setCurrentStep] = useState(1)
   const [script, setScript] = useState('')
+  const [selectedCategoria, setSelectedCategoria] = useState('tech')
   const [enhancedScript, setEnhancedScript] = useState('')
+  const [scriptMetadata, setScriptMetadata] = useState<ScriptResponse | null>(null)
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
   const [selectedVoice, setSelectedVoice] = useState<string | null>(null)
   const [isEnhancing, setIsEnhancing] = useState(false)
@@ -123,27 +159,62 @@ export default function CreatePage() {
   const [currentPlaceholder, setCurrentPlaceholder] = useState(0)
   const audioRef = useRef<HTMLAudioElement>(null)
 
+  /**
+   * Maneja la mejora del script usando IA
+   */
   const handleEnhanceScript = async () => {
-    if (!script.trim()) return
+    if (!script.trim()) {
+      error('Por favor ingresa un script primero')
+      return
+    }
 
     setIsEnhancing(true)
-    // Simulate AI enhancement
-    setTimeout(() => {
-      setEnhancedScript(
-        `${script}\n\n[IA Enhanced] - Estructura mejorada, hooks emocionales añadidos, timing optimizado para engagement máximo.`
-      )
-      setIsEnhancing(false)
-      setCurrentStep(3) // Move to template selection
-    }, 2500)
-  }
 
-  const handlePlayVoicePreview = (preview: string) => {
-    if (audioRef.current) {
-      audioRef.current.src = preview
-      audioRef.current.play()
+    try {
+      const response = await fetch('http://localhost:8000/mejorar-script', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          script: script,
+          categoria: selectedCategoria
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Error al mejorar el script')
+      }
+
+      const data = await response.json()
+      setEnhancedScript(data.script_mejorado)
+      setScriptMetadata(data)
+      success('Script mejorado exitosamente', `Duración estimada: ${data.duracion_estimada} segundos`)
+      
+    } catch (error) {
+      console.error('Error enhancing script:', error)
+      // Fallback: usar script original
+      setEnhancedScript(script)
+    } finally {
+      setIsEnhancing(false)
     }
   }
 
+  /**
+   * Reproduce la muestra de voz desde archivo estático
+   */
+  const handlePlayVoicePreview = (preview: string) => {
+    if (audioRef.current) {
+      audioRef.current.src = preview
+      audioRef.current.play().catch(() => {
+        error('No se pudo reproducir la muestra de voz')
+      })
+    }
+  }
+
+  /**
+   * Maneja la navegación al siguiente paso
+   */
   const handleNext = () => {
     if (currentStep === 1 && script.trim()) {
       setCurrentStep(2)
@@ -156,24 +227,18 @@ export default function CreatePage() {
     }
   }
 
+
+  /**
+   * Maneja la navegación al paso anterior
+   */
   const handleGenerate = async () => {
     if (!user) {
       error('Debes iniciar sesión para crear videos')
       return
     }
 
-    if (!script.trim()) {
-      error('Por favor ingresa un script')
-      return
-    }
-
-    if (!selectedTemplate) {
-      error('Por favor selecciona una plantilla')
-      return
-    }
-
-    if (!selectedVoice) {
-      error('Por favor selecciona una voz')
+    if (!script.trim() || !selectedTemplate || !selectedVoice) {
+      error('Por favor completa todos los campos requeridos')
       return
     }
 
@@ -188,10 +253,11 @@ export default function CreatePage() {
         body: JSON.stringify({
           userId: user.id,
           title: `Video ${new Date().toLocaleDateString()}`,
-          script: enhancedScript || script,
+          script: script,
           templateId: selectedTemplate,
           voiceId: selectedVoice,
-          enhancedScript: enhancedScript
+          categoria: selectedCategoria,
+          enhanceScript: !!enhancedScript
         }),
       })
 
@@ -279,12 +345,36 @@ export default function CreatePage() {
                   </p>
                 </div>
 
+                {/* Selector de categoría */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium mb-3">Categoría del contenido</label>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                    {CATEGORIAS.map((categoria) => (
+                      <button
+                        key={categoria.id}
+                        onClick={() => setSelectedCategoria(categoria.id)}
+                        className={`
+                          p-3 rounded-lg border-2 text-sm font-medium transition-all
+                          ${selectedCategoria === categoria.id
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-border hover:border-primary/50 hover:bg-primary/5'
+                          }
+                        `}
+                      >
+                        <div className="text-lg mb-1">{categoria.emoji}</div>
+                        <div>{categoria.name}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="relative">
                   <textarea
                     value={script}
                     onChange={(e) => setScript(e.target.value)}
                     placeholder={SCRIPT_PLACEHOLDERS[currentPlaceholder]}
                     className="w-full h-64 p-6 border-2 border-border rounded-2xl bg-background/50 backdrop-blur-sm text-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                    maxLength={2000}
                     onFocus={() => {
                       const nextPlaceholder = (currentPlaceholder + 1) % SCRIPT_PLACEHOLDERS.length
                       setCurrentPlaceholder(nextPlaceholder)
@@ -301,7 +391,7 @@ export default function CreatePage() {
                   </div>
                   <Button
                     onClick={() => setCurrentStep(2)}
-                    disabled={!script.trim()}
+                    disabled={!script.trim() || script.length < 10}
                     className="btn-primary px-8"
                   >
                     Continuar
@@ -344,20 +434,56 @@ export default function CreatePage() {
                     <h3 className="font-semibold mb-3 flex items-center">
                       <Sparkles className="w-4 h-4 mr-2 text-primary" />
                       Mejorado con IA
+                      {enhancedScript && (
+                        <span className="ml-2 px-2 py-1 bg-green-500/10 text-green-500 text-xs rounded-full border border-green-500/20">
+                          ✓ Listo
+                        </span>
+                      )}
                     </h3>
-                    <div className="p-4 bg-gradient-to-br from-primary/5 to-secondary/5 border border-primary/20 rounded-xl h-48 overflow-y-auto text-sm">
-                      {isEnhancing ? (
-                        <div className="flex items-center justify-center h-full">
-                          <div className="text-center">
-                            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                            <p className="text-primary">Analizando tu script...</p>
+                    <div className="relative">
+                      <div className="p-4 bg-gradient-to-br from-primary/5 to-secondary/5 border border-primary/20 rounded-xl h-48 overflow-y-auto text-sm">
+                        {isEnhancing ? (
+                          <div className="flex items-center justify-center h-full">
+                            <div className="text-center">
+                              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                              <p className="text-primary font-medium">Analizando tu script...</p>
+                              <p className="text-xs text-muted-foreground mt-1">Optimizando estructura y engagement</p>
+                            </div>
                           </div>
-                        </div>
-                      ) : enhancedScript ? (
-                        enhancedScript
-                      ) : (
-                        <div className="text-muted-foreground italic">
-                          La versión mejorada aparecerá aquí
+                        ) : enhancedScript ? (
+                          <div className="space-y-3">
+                            <div className="prose prose-sm max-w-none whitespace-pre-wrap">
+                              {enhancedScript}
+                            </div>
+                            {scriptMetadata && (
+                              <div className="pt-3 border-t border-primary/10 space-y-2">
+                                <div className="flex items-center gap-2 text-xs text-green-600">
+                                  <CheckCircle className="w-3 h-3" />
+                                  <span>Duración estimada: {scriptMetadata.duracion_estimada}s</span>
+                                </div>
+                                {scriptMetadata.mejoras_aplicadas && (
+                                  <div className="text-xs text-muted-foreground">
+                                    <strong>Mejoras:</strong> {scriptMetadata.mejoras_aplicadas.join(', ')}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center h-full">
+                            <div className="text-center text-muted-foreground">
+                              <Sparkles className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                              <p className="italic">La versión mejorada aparecerá aquí</p>
+                              <p className="text-xs mt-1">Haz clic en &quot;Mejorar con IA&quot; para comenzar</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      {enhancedScript && (
+                        <div className="absolute -bottom-2 -right-2">
+                          <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                            <Sparkles className="w-3 h-3 text-white" />
+                          </div>
                         </div>
                       )}
                     </div>
@@ -376,7 +502,7 @@ export default function CreatePage() {
                   {!enhancedScript ? (
                     <Button
                       onClick={handleEnhanceScript}
-                      disabled={isEnhancing}
+                      disabled={isEnhancing || !script.trim()}
                       className="btn-primary px-8"
                     >
                       {isEnhancing ? (
@@ -397,7 +523,7 @@ export default function CreatePage() {
                         variant="outline"
                         onClick={() => {
                           setEnhancedScript('')
-                          setIsEnhancing(false)
+                          setScriptMetadata(null)
                         }}
                       >
                         <RotateCcw className="w-4 h-4 mr-2" />
@@ -418,74 +544,136 @@ export default function CreatePage() {
           )}
 
           {currentStep === 3 && (
-            <Card className="card-glow border-0 shadow-2xl">
-              <CardContent className="p-8">
-                <div className="text-center mb-8">
-                  <div className="w-16 h-16 bg-gradient-to-br from-primary to-secondary rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <Palette className="w-8 h-8 text-white" />
-                  </div>
-                  <h2 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-2">
-                    Elige tu Plantilla
-                  </h2>
-                  <p className="text-muted-foreground text-lg">
-                    Selecciona el estilo visual que mejor represente tu contenido
-                  </p>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-4 max-w-3xl mx-auto">
-                  {TEMPLATES.map((template) => (
-                    <div
-                      key={template.id}
-                      onClick={() => setSelectedTemplate(template.id)}
-                      className={`
-                        relative p-6 border-2 rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-xl
-                        ${selectedTemplate === template.id ?
-                          'border-primary bg-gradient-to-br from-primary/10 to-secondary/10 shadow-lg' :
-                          'border-border hover:border-primary/50 bg-card'
-                        }
-                      `}
-                    >
-                      {template.isPremium && (
-                        <div className="absolute top-3 right-3">
-                          <Crown className="w-5 h-5 text-amber-500" />
-                        </div>
-                      )}
-
-                      <div className="text-center">
-                        <div className={`
-                          w-16 h-16 bg-gradient-to-br ${template.color} rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl
-                        `}>
-                          {template.preview}
-                        </div>
-                        <h3 className="text-lg font-semibold mb-2">{template.name}</h3>
-                        <p className="text-sm text-muted-foreground">{template.description}</p>
-                      </div>
-
-                      {selectedTemplate === template.id && (
-                        <div className="absolute top-3 left-3">
-                          <CheckCircle className="w-5 h-5 text-primary" />
-                        </div>
-                      )}
+            <Card className="card-glow border-0 shadow-2xl overflow-hidden">
+              <CardContent className="p-0">
+                {/* Header con gradiente */}
+                <div className="bg-gradient-to-r from-primary via-secondary to-accent p-8 text-white relative overflow-hidden">
+                  <div className="absolute inset-0 bg-black/20"></div>
+                  <div className="relative z-10 text-center">
+                    <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-3xl flex items-center justify-center mx-auto mb-6 border border-white/30">
+                      <Palette className="w-10 h-10 text-white drop-shadow-lg" />
                     </div>
-                  ))}
+                    <h2 className="text-4xl font-bold mb-3 drop-shadow-lg">
+                      Elige tu Plantilla
+                    </h2>
+                    <p className="text-white/90 text-lg max-w-2xl mx-auto">
+                      Cada plantilla está diseñada para diferentes tipos de contenido. Selecciona la que mejor se adapte a tu mensaje.
+                    </p>
+                  </div>
+                  {/* Decorative elements */}
+                  <div className="absolute top-4 right-4 w-32 h-32 bg-white/5 rounded-full blur-3xl"></div>
+                  <div className="absolute bottom-4 left-4 w-24 h-24 bg-white/5 rounded-full blur-2xl"></div>
                 </div>
 
-                <div className="flex justify-between items-center mt-8">
-                  <Button
-                    variant="outline"
-                    onClick={() => setCurrentStep(2)}
-                  >
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Atrás
-                  </Button>
-                  <Button
-                    onClick={handleNext}
-                    disabled={!selectedTemplate}
-                    className="btn-primary px-8"
-                  >
-                    Continuar
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
+                <div className="p-8">
+                  <div className="grid md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+                    {TEMPLATES.map((template, index) => (
+                      <div
+                        key={template.id}
+                        onClick={() => setSelectedTemplate(template.id)}
+                        className={`
+                          group relative p-8 border-2 rounded-3xl cursor-pointer transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl
+                          ${selectedTemplate === template.id ?
+                            'border-primary bg-gradient-to-br from-primary/10 via-secondary/5 to-accent/10 shadow-xl shadow-primary/20 scale-[1.02]' :
+                            'border-border/50 hover:border-primary/50 bg-gradient-to-br from-card to-card/80 hover:shadow-lg'
+                          }
+                        `}
+                        style={{
+                          animationDelay: `${index * 100}ms`
+                        }}
+                      >
+                        {/* Premium badge */}
+                        {template.isPremium && (
+                          <div className="absolute top-4 right-4 z-10">
+                            <div className="flex items-center gap-1 bg-gradient-to-r from-amber-400 to-amber-600 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
+                              <Crown className="w-3 h-3" />
+                              PRO
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Selection indicator */}
+                        {selectedTemplate === template.id && (
+                          <div className="absolute top-4 left-4 z-10">
+                            <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center shadow-lg">
+                              <CheckCircle className="w-5 h-5 text-white" />
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="text-center relative">
+                          {/* Template icon with enhanced styling */}
+                          <div className={`
+                            relative w-24 h-24 bg-gradient-to-br ${template.color} rounded-3xl flex items-center justify-center mx-auto mb-6 text-4xl
+                            shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110
+                            ${selectedTemplate === template.id ? 'shadow-xl scale-110' : ''}
+                          `}>
+                            <span className="drop-shadow-sm">{template.preview}</span>
+                            {/* Glow effect */}
+                            <div className={`absolute inset-0 bg-gradient-to-br ${template.color} rounded-3xl blur-xl opacity-30 -z-10 scale-150`}></div>
+                          </div>
+
+                          <h3 className="text-xl font-bold mb-3 text-foreground group-hover:text-primary transition-colors">
+                            {template.name}
+                          </h3>
+                          <p className="text-muted-foreground leading-relaxed text-sm">
+                            {template.description}
+                          </p>
+
+                          {/* Hover effect indicator */}
+                          <div className={`
+                            mt-4 h-1 bg-gradient-to-r ${template.color} rounded-full transition-all duration-300 mx-auto
+                            ${selectedTemplate === template.id ? 'w-full opacity-100' : 'w-0 opacity-0 group-hover:w-full group-hover:opacity-50'}
+                          `}></div>
+                        </div>
+
+                        {/* Background pattern for selected */}
+                        {selectedTemplate === template.id && (
+                          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent rounded-3xl pointer-events-none">
+                            <div className="absolute inset-0 opacity-30">
+                              <div className="w-full h-full bg-gradient-to-br from-primary/10 to-transparent"></div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Enhanced CTA section */}
+                  <div className="flex justify-between items-center mt-12 pt-8 border-t border-border/50">
+                    <Button
+                      variant="outline"
+                      onClick={() => setCurrentStep(2)}
+                      className="group"
+                    >
+                      <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
+                      Atrás
+                    </Button>
+
+                    <div className="text-center">
+                      {selectedTemplate && (
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Plantilla seleccionada: <span className="font-semibold text-primary">
+                            {TEMPLATES.find(t => t.id === selectedTemplate)?.name}
+                          </span>
+                        </p>
+                      )}
+                      <Button
+                        onClick={handleNext}
+                        disabled={!selectedTemplate}
+                        className="btn-primary px-10 py-3 text-lg group disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {selectedTemplate ? (
+                          <>
+                            Continuar con {TEMPLATES.find(t => t.id === selectedTemplate)?.name}
+                            <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                          </>
+                        ) : (
+                          'Selecciona una plantilla'
+                        )}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -594,7 +782,11 @@ export default function CreatePage() {
                 {/* Summary */}
                 <div className="bg-gradient-to-br from-primary/5 to-secondary/5 border border-primary/20 rounded-2xl p-6 mb-8">
                   <h3 className="font-semibold mb-4 text-center">Resumen de tu Video</h3>
-                  <div className="grid md:grid-cols-3 gap-4 text-sm">
+                  <div className="grid md:grid-cols-4 gap-4 text-sm">
+                    <div className="text-center">
+                      <div className="font-medium text-primary">Categoría</div>
+                      <div>{CATEGORIAS.find(c => c.id === selectedCategoria)?.name}</div>
+                    </div>
                     <div className="text-center">
                       <div className="font-medium text-primary">Plantilla</div>
                       <div>{TEMPLATES.find(t => t.id === selectedTemplate)?.name}</div>
@@ -605,7 +797,7 @@ export default function CreatePage() {
                     </div>
                     <div className="text-center">
                       <div className="font-medium text-primary">Duración Est.</div>
-                      <div>~45 segundos</div>
+                      <div>{scriptMetadata?.duracion_estimada || '~45'} segundos</div>
                     </div>
                   </div>
                 </div>
