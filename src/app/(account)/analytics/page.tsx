@@ -116,14 +116,14 @@ export default function AnalyticsPage() {
   const [selectedMetric, setSelectedMetric] = useState('views')
   const [isRefreshing, setIsRefreshing] = useState(false)
 
-  const {user} = useAuth()
+  const {user, profile} = useAuth()
 
   useEffect(() => {
-    console.log("User in analytics:", user)
-    if (!loading && !hasAccess(user?.role+"")) {
+    if (typeof profile?.subscription_tier !== 'string') return
+    if (!loading && !hasAccess('analytics', profile?.subscription_tier)) {
       router.push('/pricing?feature=analytics')
     }
-  }, [hasAccess, loading, router, user])
+  }, [hasAccess, loading, router, user, profile])
 
   const handleRefresh = async () => {
     setIsRefreshing(true)
@@ -140,9 +140,6 @@ export default function AnalyticsPage() {
     )
   }
 
-  if (!hasAccess('PRO')) {
-    return null // Will redirect via useEffect
-  }
 
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {

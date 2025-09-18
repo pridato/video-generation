@@ -151,8 +151,9 @@ export function useSubscription() {
   const isCanceled = user?.subscription_status === 'canceled'
 
   // Helper functions to check plan access based on subscription_tier
-  const hasAccess = (feature: string) => {
-    switch (user?.subscription_tier) {
+  const hasAccess = (feature: string, userRole: string) => {
+    console.log("Checking access for feature:", feature, "with role:", userRole)
+    switch (userRole) {
       case 'free':
         return ['basic_templates'].includes(feature)
       case 'pro':

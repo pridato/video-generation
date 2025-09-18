@@ -28,6 +28,7 @@ interface UserProfile {
 interface AuthContextType {
   user: User | null
   profile: UserProfile | null
+  credits: number | null
   session: Session | null
   isLoading: boolean
   signOut: () => Promise<void>
@@ -38,6 +39,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [credits, setCredits] = useState<number | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -66,11 +68,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (user) {
       const profileData = await fetchProfile(user.id)
       setProfile(profileData)
+      // Actualizar créditos cuando se actualiza el perfil
+      if (profileData) {
+        setCredits(profileData.monthly_limit - profileData.monthly_videos_used)
+      }
     }
   }
 
   const signOut = async () => {
     await supabase.auth.signOut()
+    // Limpiar estado al cerrar sesión
+    setUser(null)
+    setProfile(null)
+    setSession(null)
+    setCredits(null)
   }
 
   useEffect(() => {
@@ -83,6 +94,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user) {
           const profileData = await fetchProfile(session.user.id)
           setProfile(profileData)
+          // Calcular créditos basado en el perfil obtenido
+          if (profileData) {
+            setCredits(profileData.monthly_limit - profileData.monthly_videos_used)
+          }
         }
       } catch (error) {
         console.error('Error initializing auth:', error)
@@ -101,8 +116,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user) {
           const profileData = await fetchProfile(session.user.id)
           setProfile(profileData)
+          if (profileData) {
+            setCredits(profileData.monthly_limit - profileData.monthly_videos_used)
+          }
         } else {
           setProfile(null)
+          setCredits(null)
         }
 
         setIsLoading(false)
@@ -110,7 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     )
 
     return () => subscription.unsubscribe()
-  }, [fetchProfile, supabase.auth])
+  }, [fetchProfile, supabase.auth]) // Removido 'profile' de las dependencias
 
   return (
     <AuthContext.Provider
@@ -119,6 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profile,
         session,
         isLoading,
+        credits,
         signOut,
         refreshProfile
       }}

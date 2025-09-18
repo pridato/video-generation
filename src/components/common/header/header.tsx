@@ -33,7 +33,7 @@ const NAVIGATION_DATA = {
 export function Header() {
   const router = useRouter()
   const pathname = usePathname()
-  const { user, profile, isLoading, signOut } = useAuth()
+  const { user, profile,credits, isLoading, signOut } = useAuth()
   const { success } = useToast()
    const {
     subscriptionInfo,
@@ -114,9 +114,10 @@ export function Header() {
   const CreditIndicator = () => {
     if (!isAuthenticated || !profile) return null
 
-    const creditsRemaining = profile.credits_remaining || profile.credits || 0
-    const isLow = creditsRemaining <= 10
-    const isVeryLow = creditsRemaining <= 3
+    if( credits === null ) return null
+
+    const isLow = credits <= 10
+    const isVeryLow = credits <= 3
 
     return (
       <div className="flex items-center gap-2">
@@ -132,7 +133,7 @@ export function Header() {
             'text-green-500'
           }`} />
           <span className="text-sm font-medium">
-            {creditsRemaining}
+            {credits} créditos
           </span>
           {isLow && (
             <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${
@@ -146,7 +147,7 @@ export function Header() {
           size="sm"
           variant="outline"
           className="flex items-center gap-1 h-9 px-3"
-          onClick={() => router.push('/credits')}
+          onClick={() => router.push('/credits/purchase-credits')}
         >
           <Plus className="w-3 h-3" />
           <span className="hidden sm:inline">Comprar</span>
@@ -198,7 +199,7 @@ export function Header() {
                   {getTierIcon && getTierIcon(profile.subscription_tier)}
                 </div>
                 <div className="text-xs text-muted-foreground font-medium">
-                  {profile.credits_remaining || profile.credits || 0} créditos
+                  {credits || 0} créditos
                 </div>
               </div>
             </div>
@@ -404,7 +405,7 @@ export function Header() {
                           </div>
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <Coins className="w-3 h-3" />
-                            {profile.credits_remaining || profile.credits || 0}
+                            {credits || 0}
                           </div>
                         </div>
                       </div>

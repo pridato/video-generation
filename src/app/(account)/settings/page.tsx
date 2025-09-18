@@ -20,12 +20,15 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/hooks/auth'
 import Image from 'next/image'
+import { PLAN_BENEFITS } from '@/lib/data/credits'
+import { useRouter } from 'next/navigation'
 
 export default function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const router = useRouter()
 
   
-  const { profile, user } = useAuth()
+  const { profile, user, credits } = useAuth()
 
   const [, setAvatarPreview] = useState<string | null>(null)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
@@ -47,12 +50,6 @@ export default function SettingsPage() {
 
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-
-  // Agregar estado para el perfil
-  const [profileData, setProfileData] = useState({
-    fullName: profile?.full_name || '',
-    email: profile?.email || user?.email || ''
-  })
 
   const voices = [
     { id: 'spanish-male-1', name: 'Carlos (Masculina)' },
@@ -216,16 +213,14 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Nombre Completo</label>
                   <Input
-                    value={profileData.fullName}
-                    onChange={(e) => setProfileData({...profileData, fullName: e.target.value})}
+                    value={profile?.full_name}
                     placeholder="Tu nombre completo"
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Email</label>
                   <Input
-                    value={profileData.email}
-                    onChange={(e) => setProfileData({...profileData, email: e.target.value})}
+                    value={user?.email}
                     placeholder="tu@email.com"
                     type="email"
                   />
@@ -475,18 +470,18 @@ export default function SettingsPage() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between p-4 border border-border rounded-lg">
                 <div>
-                  <div className="font-medium">Plan Gratuito</div>
+                  <div className="font-medium">Plan {profile?.subscription_tier}</div>
                   <div className="text-sm text-muted-foreground">
-                    5 videos por mes • Resolución 720p
+                    {PLAN_BENEFITS[(profile?.subscription_tier as keyof typeof PLAN_BENEFITS) || 'free'].features[0]} • {PLAN_BENEFITS[(profile?.subscription_tier as keyof typeof PLAN_BENEFITS) || 'free'].features[2]}
                   </div>
                 </div>
-                <Button className="btn-primary">
+                <Button className="btn-primary" onClick={() => router.push('/pricing')}>
                   Mejorar Plan
                 </Button>
               </div>
 
               <div className="text-center pt-4">
-                <div className="text-2xl font-bold text-accent mb-1">5</div>
+                <div className="text-2xl font-bold text-accent mb-1">{credits}</div>
                 <div className="text-sm text-muted-foreground">Créditos restantes este mes</div>
               </div>
             </CardContent>
