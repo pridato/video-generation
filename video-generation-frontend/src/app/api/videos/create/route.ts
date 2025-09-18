@@ -12,6 +12,9 @@ const supabase = createClient(
   }
 )
 
+// URL del backend de Python
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000'
+
 export async function POST(request: NextRequest) {
   try {
     const {
@@ -20,7 +23,8 @@ export async function POST(request: NextRequest) {
       script,
       templateId,
       voiceId,
-      enhancedScript
+      categoria, // Nueva propiedad para la categoría
+      enhanceScript = true // Flag para determinar si mejorar el script
     } = await request.json()
 
     // Validate required fields
@@ -58,16 +62,63 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    let enhancedScript = script
+    let scriptMetadata = null
+
+    // Mejorar script usando el backend de Python si está habilitado
+    if (enhanceScript && categoria) {
+      try {
+        console.log(`Enviando script para mejora a ${BACKEND_URL}/mejorar-script`)
+        
+        const scriptResponse = await fetch(`${BACKEND_URL}/mejorar-script`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            script: script,
+            categoria: categoria
+          })
+        })
+
+        if (!scriptResponse.ok) {
+          const errorData = await scriptResponse.json()
+          console.error('Error del backend:', errorData)
+          
+          // Si falla la mejora, continuar con el script original
+          console.warn('Falló la mejora del script, usando script original')
+        } else {
+          const scriptData = await scriptResponse.json()
+          enhancedScript = scriptData.script_mejorado
+          scriptMetadata = {
+            duracion_estimada: scriptData.duracion_estimada,
+            segmentos: scriptData.segmentos,
+            palabras_clave: scriptData.palabras_clave,
+            tono: scriptData.tono,
+            mejoras_aplicadas: scriptData.mejoras_aplicadas
+          }
+          
+          console.log(`Script mejorado exitosamente. Duración estimada: ${scriptData.duracion_estimada}s`)
+        }
+      } catch (error) {
+        console.error('Error conectando con backend de mejora:', error)
+        // Si falla la conexión, continuar con el script original
+        console.warn('No se pudo conectar con el servicio de mejora, usando script original')
+      }
+    }
+
     // Create video record in database
     const { data: video, error: videoError } = await supabase
       .from('videos')
       .insert({
         user_id: userId,
         title: title,
-        script: script,
-        enhanced_script: enhancedScript,
+        script: script, // Script original
+        enhanced_script: enhancedScript, // Script mejorado (o original si falló)
+        script_metadata: scriptMetadata, // Metadatos del script mejorado
         template_id: templateId,
         voice_id: voiceId,
+        categoria: categoria, // Guardar categoría
         status: 'processing',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -89,7 +140,6 @@ export async function POST(request: NextRequest) {
       .update({
         credits_remaining: profile.credits_remaining - 1,
         videos_used: profile.videos_used + 1,
-        usage_count: (profile.usage_count || 0) + 1,
         updated_at: new Date().toISOString()
       })
       .eq('id', userId)
@@ -102,16 +152,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Here you would typically trigger the actual video generation process
-    // For now, we'll simulate it with a timeout
+    // Simular procesamiento de video (aquí iría la lógica real de generación)
     setTimeout(async () => {
-      // Simulate video processing completion
+      // Simular video processing completion
       const { error: updateError } = await supabase
         .from('videos')
         .update({
           status: 'completed',
           video_url: `https://example.com/videos/${video.id}.mp4`,
-          duration: Math.floor(Math.random() * 60) + 30, // Random duration 30-90s
+          duration: scriptMetadata?.duracion_estimada || Math.floor(Math.random() * 60) + 30,
           updated_at: new Date().toISOString()
         })
         .eq('id', video.id)
@@ -127,12 +176,15 @@ export async function POST(request: NextRequest) {
         id: video.id,
         title: video.title,
         status: video.status,
-        created_at: video.created_at
+        created_at: video.created_at,
+        script_original: script,
+        script_mejorado: enhancedScript,
+        script_metadata: scriptMetadata
       },
-      videos_remaining: profile.monthly_limit - (profile.monthly_videos_used + 1),
-      monthly_videos_used: profile.monthly_videos_used + 1,
-      monthly_limit: profile.monthly_limit,
-      message: 'Video creation started successfully'
+      credits_remaining: profile.credits_remaining - 1,
+      message: scriptMetadata 
+        ? 'Video creation started with enhanced script' 
+        : 'Video creation started with original script'
     })
 
   } catch (error) {

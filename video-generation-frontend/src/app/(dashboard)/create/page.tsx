@@ -10,7 +10,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import {
   Play,
   Sparkles,
-  Mic,
   Palette,
   ArrowRight,
   ArrowLeft,
@@ -20,7 +19,6 @@ import {
   Volume2,
   Clapperboard,
   Zap,
-  Copy,
   RotateCcw,
   Crown
 } from 'lucide-react'

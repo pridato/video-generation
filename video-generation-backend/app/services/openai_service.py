@@ -1,6 +1,5 @@
 import json
 import logging
-from typing import Dict, Any
 from openai import OpenAI
 from app.config import settings
 from app.models import ScriptResponse, CategoriaEnum, TonoEnum, TipoSegmentoEnum, Segmento
@@ -16,30 +15,60 @@ class OpenAIService:
         self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
     def _crear_prompt_sistema(self) -> str:
-        return """Eres un experto en contenido viral para YouTube Shorts. Tu tarea es mejorar scripts para videos de máximo 60 segundos.
+        return """Eres un experto en contenido viral para YouTube Shorts. DEBES responder ÚNICAMENTE con un JSON válido.
 
-ESTRUCTURA REQUERIDA:
-1. HOOK (5-8 segundos): Gancho potente que capture atención inmediata
-2. CONTENIDO (40-45 segundos): Información valiosa, clara y concisa
-3. CTA (5-8 segundos): Llamada a la acción convincente
+        ESTRUCTURA JSON REQUERIDA (OBLIGATORIA):
+        {
+        "script_mejorado": "aquí va el texto completo del script mejorado",
+        "duracion_estimada": 45,
+        "segmentos": [
+            {
+            "texto": "texto del hook aquí",
+            "duracion": 8,
+            "tipo": "hook"
+            },
+            {
+            "texto": "texto del contenido principal aquí",
+            "duracion": 32,
+            "tipo": "contenido"
+            },
+            {
+            "texto": "texto de la llamada a la acción aquí",
+            "duracion": 5,
+            "tipo": "cta"
+            }
+        ],
+        "palabras_clave": ["palabra1", "palabra2", "palabra3", "palabra4", "palabra5"],
+        "tono": "educativo",
+        "mejoras_aplicadas": ["mejora 1", "mejora 2", "mejora 3"]
+        }
 
-OPTIMIZACIONES CLAVE:
-- Usar palabras poderosas y emocionales
-- Incluir números específicos y datos
-- Crear urgencia y curiosidad
-- Optimizar para SEO con palabras clave naturales
-- Mantener ritmo dinámico
-- Usar técnicas de storytelling
+        REGLAS ESTRICTAS:
+        - SOLO responde con el JSON, sin texto adicional
+        - Los tipos de segmento DEBEN ser: "hook", "contenido", "cta"
+        - Duración entre 15-60 segundos total
+        - Exactamente 3 segmentos
+        - Al menos 3 palabras clave
+        - Tono debe ser uno de: "educativo", "viral", "profesional", "casual", "energetico"
+        - Script mejorado debe combinar los 3 segmentos
 
-CÁLCULO DE DURACIÓN:
-- Velocidad promedio: 2 palabras por segundo
-- Hook: 10-16 palabras (5-8s)
-- Contenido: 80-90 palabras (40-45s)
-- CTA: 10-16 palabras (5-8s)
-
-Responde SIEMPRE en formato JSON válido con la estructura exacta especificada."""
+        OPTIMIZACIONES:
+        - Hook: Captura atención inmediata (5-8s)
+        - Contenido: Información valiosa y clara (30-45s)  
+        - CTA: Llamada a la acción específica (5-8s)
+        - Usar emojis, números, palabras poderosas
+        - Crear urgencia y curiosidad"""
 
     def _crear_prompt_usuario(self, script: str, categoria: CategoriaEnum) -> str:
+        """
+        Prompt específico para cada solicitud de mejora de script.
+        Incluye el script original y la categoría para contexto.
+        Params:
+            script: Script original a mejorar
+            categoria: Categoría del contenido para adaptar el tono y estilo
+        Returns:
+            Prompt completo para el usuario
+        """
         prompts_categoria = {
             "tech": "tecnología, programación, innovación, desarrollo, software",
             "marketing": "ventas, estrategia, branding, publicidad, conversión",
@@ -53,33 +82,24 @@ Responde SIEMPRE en formato JSON válido con la estructura exacta especificada."
             "news": "noticias, actualidad, información, análisis, tendencias"
         }
 
-        palabras_clave = prompts_categoria.get(categoria, "contenido, información")
+        palabras_clave = prompts_categoria.get(
+            categoria, "contenido, información")
 
-        return f"""Script original: "{script}"
-Categoría: {categoria}
-Palabras clave relevantes: {palabras_clave}
+        prompt = f"""Script original: "{script}"
+        Categoría: {categoria}
+            Palabras clave relevantes: {palabras_clave}
 
-INSTRUCCIONES ESPECÍFICAS:
-1. Mejora el script manteniendo la esencia del mensaje original
-2. Crea un hook irresistible que haga imposible no seguir viendo
-3. Estructura el contenido de forma lógica y fácil de seguir
-4. Incluye un CTA que genere engagement (like, follow, comment)
-5. Optimiza la duración total entre 15-60 segundos
-6. Identifica el tono más efectivo para la audiencia
+            INSTRUCCIONES ESPECÍFICAS:
+            1. Mejora el script manteniendo la esencia del mensaje original
+            2. Crea un hook irresistible que haga imposible no seguir viendo
+            3. Estructura el contenido de forma lógica y fácil de seguir
+            4. Incluye un CTA que genere engagement (like, follow, comment)
+            5. Optimiza la duración total entre 15-60 segundos
+            6. Identifica el tono más efectivo para la audiencia
 
-Responde con este JSON exacto:
-{
-  "script_mejorado": "texto completo del script mejorado",
-  "duracion_estimada": número_total_segundos,
-  "segmentos": [
-    {"texto": "hook_text", "duracion": segundos, "tipo": "hook"},
-    {"texto": "contenido_text", "duracion": segundos, "tipo": "contenido"},
-    {"texto": "cta_text", "duracion": segundos, "tipo": "cta"}
-  ],
-  "palabras_clave": ["palabra1", "palabra2", "palabra3"],
-  "tono": "educativo|viral|profesional|casual|energetico",
-  "mejoras_aplicadas": ["mejora1", "mejora2", "mejora3"]
-}"""
+            Responde con el JSON exacto especificado en las instrucciones del sistema."""
+
+        return prompt
 
     async def mejorar_script(self, script: str, categoria: CategoriaEnum) -> ScriptResponse:
         try:
@@ -89,15 +109,17 @@ Responde con este JSON exacto:
                 model=settings.OPENAI_MODEL,
                 messages=[
                     {"role": "system", "content": self._crear_prompt_sistema()},
-                    {"role": "user", "content": self._crear_prompt_usuario(script, categoria)}
+                    {"role": "user", "content": self._crear_prompt_usuario(
+                        script, categoria)}
                 ],
                 temperature=0.7,
                 max_tokens=1500,
                 response_format={"type": "json_object"}
             )
 
-            content = response.choices[0].message.content
-            logger.info(f"Respuesta de OpenAI recibida: {len(content)} caracteres")
+            content = response.choices[0].message.content or ""
+            logger.info(
+                f"Respuesta de OpenAI recibida: {content}")
 
             # Parse JSON response
             try:
@@ -129,13 +151,15 @@ Responde con este JSON exacto:
                 mejoras_aplicadas=data.get("mejoras_aplicadas", [])
             )
 
-            logger.info(f"Script mejorado exitosamente. Duración: {response_data.duracion_estimada}s")
+            logger.info(
+                f"Script mejorado exitosamente. Duración: {response_data.duracion_estimada}s")
             return response_data
 
         except Exception as e:
             logger.error(f"Error en OpenAI service: {str(e)}")
             if "rate_limit" in str(e).lower():
-                raise ValueError("Límite de rate de OpenAI excedido. Intenta nuevamente en unos minutos.")
+                raise ValueError(
+                    "Límite de rate de OpenAI excedido. Intenta nuevamente en unos minutos.")
             elif "api_key" in str(e).lower():
                 raise ValueError("API key de OpenAI inválida")
             else:

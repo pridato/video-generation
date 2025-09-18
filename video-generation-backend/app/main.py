@@ -74,7 +74,8 @@ async def mejorar_script(request: ScriptRequest):
     - Duración estimada
     """
     try:
-        logger.info(f"Recibida solicitud para mejorar script de categoría: {request.categoria}")
+        logger.info(
+            f"Recibida solicitud para mejorar script de categoría: {request.categoria}")
 
         # Verificar que OpenAI esté configurado
         if not openai_service:
@@ -96,7 +97,8 @@ async def mejorar_script(request: ScriptRequest):
             categoria=request.categoria
         )
 
-        logger.info(f"Script mejorado exitosamente. Duración: {result.duracion_estimada}s")
+        logger.info(
+            f"Script mejorado exitosamente. Duración: {result.duracion_estimada}s")
         return result
 
     except ValueError as e:
