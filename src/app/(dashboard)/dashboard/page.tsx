@@ -6,6 +6,7 @@ import { Header } from '@/components/common/header/header'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Plus, Video, TrendingUp, Clock, Sparkles, Play, Download, Share2 } from 'lucide-react'
+import { DashboardSkeleton } from '@/components/dashboard/DashboardSkeleton'
 
 export default async function DashboardPage() {
   const supabase = createClient()
@@ -41,6 +42,11 @@ export default async function DashboardPage() {
 
   const videosRemaining = profile ? profile.monthly_limit - profile.monthly_videos_used : 0
   const avgDuration = 45 // Placeholder, se puede calcular de los videos reales
+
+  // Loading state
+  if (!profile) {
+    return <DashboardSkeleton />
+  }
 
   return (
     <div className="min-h-screen bg-background">

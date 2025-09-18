@@ -27,6 +27,8 @@ import {
 } from 'lucide-react'
 import { MOCK_VIDEOS, Video } from '@/lib/data/videos'
 import type { VideoStatus } from '@/lib/data/videos'
+import { VideoCard } from '@/components/videos/VideoCard'
+import type { VideoProject } from '@/types'
 import { useRouter } from 'next/navigation'
 
 export default function LibraryPage() {
@@ -268,154 +270,69 @@ export default function LibraryPage() {
           </Card>
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-            {filteredVideos.map((video) => (
-              <Card
-                key={video.id}
-                className="group overflow-hidden border-0 shadow-sm hover:shadow-lg transition-all duration-200 bg-card/50 backdrop-blur-sm"
-              >
-                <div className="aspect-[9/16] bg-gradient-to-br from-muted/30 to-muted/10 flex items-center justify-center text-4xl relative overflow-hidden">
-                  {video.thumbnail}
-                  {video.status === 'completed' && (
-                    <Button
-                      size="sm"
-                      className="absolute inset-0 w-full h-full bg-black/0 hover:bg-black/20 border-0 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                    >
-                      <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center">
-                        <Play className="w-5 h-5 text-black ml-0.5" fill="currentColor" />
-                      </div>
-                    </Button>
-                  )}
-                  <div className="absolute top-3 left-3">
-                    <div className={getStatusBadge(video.status)}>
-                      {getStatusIcon(video.status)}
-                      {getStatusText(video.status)}
-                    </div>
-                  </div>
-                  <div className="absolute bottom-3 right-3 bg-black/70 text-white text-xs px-2 py-1 rounded-md font-medium">
-                    {formatDuration(video.duration)}
-                  </div>
-                </div>
+            {filteredVideos.map((video) => {
+              // Convertir Video a VideoProject para compatibilidad
+              const videoProject: VideoProject & { views?: number; engagement_rate?: number } = {
+                id: video.id,
+                user_id: 'current-user', // Placeholder
+                title: video.title,
+                script: '', // Placeholder
+                template_id: video.template,
+                status: video.status,
+                video_url: video.video_url || video.downloadUrl,
+                thumbnail_url: video.thumbnail_url,
+                duration: video.duration,
+                created_at: video.createdAt,
+                updated_at: video.createdAt,
+                views: video.views,
+                engagement_rate: video.engagement_rate
+              }
 
-                <CardContent className="p-4">
-                  <div className="mb-3">
-                    <h3 className="font-semibold text-sm line-clamp-2 mb-1">
-                      {video.title}
-                    </h3>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>{video.template}</span>
-                      <span>•</span>
-                      <span>{formatDate(video.createdAt)}</span>
-                    </div>
-                    {video.views && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                        <Eye className="w-3 h-3" />
-                        <ClientNumber value={video.views} />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex gap-1">
-                    {video.status === 'completed' && video.downloadUrl && (
-                      <Button size="sm" variant="outline" className="flex-1 h-8 text-xs">
-                        <Download className="w-3 h-3 mr-1" />
-                        Descargar
-                      </Button>
-                    )}
-                    {video.status === 'failed' && (
-                      <Button size="sm" variant="outline" className="flex-1 h-8 text-xs">
-                        Reintentar
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDelete(video.id)}
-                      className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+              return (
+                <VideoCard
+                  key={video.id}
+                  video={videoProject}
+                  variant="grid"
+                  onDelete={handleDelete}
+                  onPlay={(id) => console.log('Play video:', id)}
+                  onShare={(id) => console.log('Share video:', id)}
+                />
+              )
+            })}
           </div>
         ) : (
           <Card className="border-0 shadow-sm">
             <CardContent className="p-0">
               <div className="divide-y divide-border/50">
-                {filteredVideos.map((video) => (
-                  <div
-                    key={video.id}
-                    className="p-4 hover:bg-accent/5 transition-colors group"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-20 h-20 bg-gradient-to-br from-muted/30 to-muted/10 rounded-xl flex items-center justify-center text-xl relative overflow-hidden">
-                        {video.thumbnail}
-                        {video.status === 'completed' && (
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                            <Play className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </div>
-                        )}
-                      </div>
+                {filteredVideos.map((video) => {
+                  // Convertir Video a VideoProject para compatibilidad
+                  const videoProject: VideoProject & { views?: number; engagement_rate?: number } = {
+                    id: video.id,
+                    user_id: 'current-user', // Placeholder
+                    title: video.title,
+                    script: '', // Placeholder
+                    template_id: video.template,
+                    status: video.status,
+                    video_url: video.video_url || video.downloadUrl,
+                    thumbnail_url: video.thumbnail_url,
+                    duration: video.duration,
+                    created_at: video.createdAt,
+                    updated_at: video.createdAt,
+                    views: video.views,
+                    engagement_rate: video.engagement_rate
+                  }
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between mb-2">
-                          <h3 className="font-semibold truncate pr-2">{video.title}</h3>
-                          <div className={getStatusBadge(video.status)}>
-                            {getStatusIcon(video.status)}
-                            {getStatusText(video.status)}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            {formatDate(video.createdAt)}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Timer className="w-3 h-3" />
-                            {formatDuration(video.duration)}
-                          </span>
-                          <span>{video.template}</span>
-                          {video.views && (
-                            <span className="flex items-center gap-1">
-                              <Eye className="w-3 h-3" />
-                              <ClientNumber value={video.views} />
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {video.status === 'completed' && (
-                          <>
-                            <Button size="sm" variant="outline" className="h-8 w-8 p-0">
-                              <Play className="w-3 h-3" />
-                            </Button>
-                            <Button size="sm" variant="outline" className="h-8 w-8 p-0">
-                              <Download className="w-3 h-3" />
-                            </Button>
-                            <Button size="sm" variant="outline" className="h-8 w-8 p-0">
-                              <Share2 className="w-3 h-3" />
-                            </Button>
-                          </>
-                        )}
-                        {video.status === 'failed' && (
-                          <Button size="sm" variant="outline" className="h-8">
-                            Reintentar
-                          </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDelete(video.id)}
-                          className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  return (
+                    <VideoCard
+                      key={video.id}
+                      video={videoProject}
+                      variant="list"
+                      onDelete={handleDelete}
+                      onPlay={(id) => console.log('Play video:', id)}
+                      onShare={(id) => console.log('Share video:', id)}
+                    />
+                  )
+                })}
               </div>
             </CardContent>
           </Card>

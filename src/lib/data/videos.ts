@@ -1,4 +1,4 @@
-export type VideoStatus = 'processing' | 'completed' | 'failed'
+export type VideoStatus = 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled'
 
 export interface Video {
   id: string
@@ -10,6 +10,10 @@ export interface Video {
   template: string
   views?: number
   downloadUrl?: string
+  // Nuevos campos para integración con Storage
+  video_url?: string
+  thumbnail_url?: string
+  engagement_rate?: number
 }
 
 
@@ -24,7 +28,10 @@ export const MOCK_VIDEOS: Video[] = [
     createdAt: '2024-01-15',
     template: 'Tutorial Tecnológico',
     views: 1250,
-    downloadUrl: '/videos/react-hooks.mp4'
+    downloadUrl: '/videos/react-hooks.mp4',
+    video_url: 'https://supabase.co/storage/v1/object/public/generated-content/users/123/react-hooks.mp4',
+    thumbnail_url: 'https://supabase.co/storage/v1/object/public/assets/thumbnails/react-hooks.jpg',
+    engagement_rate: 0.12
   },
   {
     id: '2',
@@ -35,7 +42,10 @@ export const MOCK_VIDEOS: Video[] = [
     createdAt: '2024-01-12',
     template: 'Datos Virales',
     views: 3800,
-    downloadUrl: '/videos/js-tricks.mp4'
+    downloadUrl: '/videos/js-tricks.mp4',
+    video_url: 'https://supabase.co/storage/v1/object/public/generated-content/users/123/js-tricks.mp4',
+    thumbnail_url: 'https://supabase.co/storage/v1/object/public/assets/thumbnails/js-tricks.jpg',
+    engagement_rate: 0.18
   },
   {
     id: '3',
@@ -46,7 +56,10 @@ export const MOCK_VIDEOS: Video[] = [
     createdAt: '2024-01-10',
     template: 'Consejos de Vida',
     views: 890,
-    downloadUrl: '/videos/dev-tips.mp4'
+    downloadUrl: '/videos/dev-tips.mp4',
+    video_url: 'https://supabase.co/storage/v1/object/public/generated-content/users/123/dev-tips.mp4',
+    thumbnail_url: 'https://supabase.co/storage/v1/object/public/assets/thumbnails/dev-tips.jpg',
+    engagement_rate: 0.08
   },
   {
     id: '4',
