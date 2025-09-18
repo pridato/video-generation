@@ -11,7 +11,6 @@ import {
   Star,
   Crown,
   Check,
-  Plus,
   Sparkles,
   ArrowRight,
   Gift

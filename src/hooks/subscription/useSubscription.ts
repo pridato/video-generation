@@ -16,7 +16,7 @@ export interface UserProfile {
   target_audience?: string
   preferred_language: string
   last_video_created_at?: string
-  brand_colors: Record<string, any>
+  brand_colors: Record<string, unknown>
   stripe_customer_id?: string
   subscription_status?: 'active' | 'canceled' | 'past_due' | 'incomplete' | 'inactive'
   created_at: string
@@ -202,6 +202,11 @@ export function useSubscription() {
     }
   }
 
+    const getCredits = () => {
+      if (!user) return 0
+      return user.monthly_limit - user.monthly_videos_used
+    }
+
   return {
     user,
     subscription: user, // For backward compatibility
@@ -218,5 +223,6 @@ export function useSubscription() {
     updateUserProfile,
     createCheckoutSession,
     manageBilling,
+    getCredits
   }
 }
