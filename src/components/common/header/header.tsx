@@ -26,6 +26,7 @@ import {
   Settings,
   Coins,
   Plus,
+  CoinsIcon,
 } from "lucide-react";
 
 const NAVIGATION_DATA = {
@@ -131,30 +132,26 @@ export function Header() {
       <div className="flex items-center gap-2">
         {/* Mostrar créditos */}
         <Button
-          onClick={() => router.push("/credits/actual-credits")}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-            isVeryLow
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${isVeryLow
               ? "bg-red-50 hover:bg-red-100 text-red-700"
               : isLow
-              ? "bg-yellow-50 hover:bg-yellow-100 text-yellow-700"
-              : "bg-muted/30 hover:bg-muted/50"
-          }`}
+                ? "bg-yellow-50 hover:bg-yellow-100 text-yellow-700"
+                : "bg-muted/30 hover:bg-muted/50"
+            }`}
         >
           <Coins
-            className={`w-4 h-4 ${
-              isVeryLow
+            className={`w-4 h-4 ${isVeryLow
                 ? "text-red-500"
                 : isLow
-                ? "text-yellow-500"
-                : "text-green-500"
-            }`}
+                  ? "text-yellow-500"
+                  : "text-green-500"
+              }`}
           />
           <span className="text-sm font-medium">{credits} créditos</span>
           {isLow && (
             <div
-              className={`w-1.5 h-1.5 rounded-full animate-pulse ${
-                isVeryLow ? "bg-red-500" : "bg-yellow-500"
-              }`}
+              className={`w-1.5 h-1.5 rounded-full animate-pulse ${isVeryLow ? "bg-red-500" : "bg-yellow-500"
+                }`}
             />
           )}
         </Button>
@@ -196,9 +193,8 @@ export function Header() {
               {getTierIcon && getTierIcon(profile.subscription_tier)}
             </div>
             <p
-              className={`text-xs font-medium ${
-                subscriptionInfo?.color || "text-muted-foreground"
-              }`}
+              className={`text-xs font-medium ${subscriptionInfo?.color || "text-muted-foreground"
+                }`}
             >
               {subscriptionInfo?.label || profile.subscription_tier}
             </p>
@@ -219,9 +215,8 @@ export function Header() {
               <div className="flex items-center justify-between mt-3">
                 <div className="flex items-center gap-2">
                   <span
-                    className={`text-xs px-2 py-1 rounded-full font-medium ${
-                      subscriptionInfo?.bgColor || "bg-muted"
-                    } ${subscriptionInfo?.color || "text-muted-foreground"}`}
+                    className={`text-xs px-2 py-1 rounded-full font-medium ${subscriptionInfo?.bgColor || "bg-muted"
+                      } ${subscriptionInfo?.color || "text-muted-foreground"}`}
                   >
                     {subscriptionInfo?.label || profile.subscription_tier}
                   </span>
@@ -241,6 +236,15 @@ export function Header() {
               >
                 <Settings className="w-4 h-4" />
                 Configuración
+              </Link>
+
+              <Link
+                href="/credits/actual-credits"
+                className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-muted/50 transition-colors"
+                onClick={() => setIsUserMenuOpen(false)}
+              >
+                <CoinsIcon className="w-4 h-4" />
+                Gestionar Créditos
               </Link>
 
               <Link
@@ -293,11 +297,10 @@ export function Header() {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`transition-colors ${
-                      isActiveLink(item.href)
+                    className={`transition-colors ${isActiveLink(item.href)
                         ? "text-foreground font-medium"
                         : "text-muted-foreground hover:text-foreground"
-                    }`}
+                      }`}
                   >
                     {item.label}
                   </Link>
@@ -340,11 +343,10 @@ export function Header() {
                       <Link
                         key={item.href}
                         href={item.href}
-                        className={`transition-colors flex items-center gap-2 px-3 py-2 rounded-lg ${
-                          isActive
+                        className={`transition-colors flex items-center gap-2 px-3 py-2 rounded-lg ${isActive
                             ? "text-foreground font-medium bg-primary/10"
                             : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                        }`}
+                          }`}
                       >
                         {IconComponent && <IconComponent className="w-4 h-4" />}
                         {item.label}
@@ -362,11 +364,10 @@ export function Header() {
                         <Link
                           key={item.href}
                           href={item.href}
-                          className={`transition-colors flex items-center gap-2 px-3 py-2 rounded-lg ${
-                            isActive
+                          className={`transition-colors flex items-center gap-2 px-3 py-2 rounded-lg ${isActive
                               ? "text-foreground font-medium bg-primary/10"
                               : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                          }`}
+                            }`}
                         >
                           <IconComponent className="w-4 h-4" />
                           {item.label}
@@ -443,12 +444,10 @@ export function Header() {
                         <div className="flex items-center gap-2">
                           <div className="flex items-center gap-1">
                             <span
-                              className={`text-xs px-2 py-0.5 rounded-full ${
-                                subscriptionInfo?.bgColor || "bg-muted"
-                              } ${
-                                subscriptionInfo?.color ||
+                              className={`text-xs px-2 py-0.5 rounded-full ${subscriptionInfo?.bgColor || "bg-muted"
+                                } ${subscriptionInfo?.color ||
                                 "text-muted-foreground"
-                              }`}
+                                }`}
                             >
                               {subscriptionInfo?.label ||
                                 profile.subscription_tier}

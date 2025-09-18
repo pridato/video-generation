@@ -9,18 +9,10 @@ import { Select } from '@/components/ui/select'
 import { ClientNumber } from '@/components/ui/client-number'
 import {
   Play,
-  Download,
-  Share2,
-  Trash2,
   Search,
-  Clock,
-  CheckCircle,
-  AlertCircle,
   Plus,
   Grid3X3,
   List,
-  Eye,
-  Calendar,
   Zap,
   TrendingUp,
   Timer
@@ -44,54 +36,6 @@ export default function LibraryPage() {
     return matchesSearch && matchesStatus
   })
 
-  const getStatusIcon = (status: VideoStatus) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle className="w-4 h-4 text-success" />
-      case 'processing':
-        return <Clock className="w-4 h-4 text-primary animate-pulse" />
-      case 'failed':
-        return <AlertCircle className="w-4 h-4 text-destructive" />
-    }
-  }
-
-  const getStatusText = (status: VideoStatus) => {
-    switch (status) {
-      case 'completed':
-        return 'Completado'
-      case 'processing':
-        return 'Procesando'
-      case 'failed':
-        return 'Error'
-    }
-  }
-
-  const getStatusBadge = (status: VideoStatus) => {
-    const baseClasses = "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
-    switch (status) {
-      case 'completed':
-        return `${baseClasses} bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400`
-      case 'processing':
-        return `${baseClasses} bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400`
-      case 'failed':
-        return `${baseClasses} bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400`
-    }
-  }
-
-  const formatDuration = (seconds: number) => {
-    if (seconds === 0) return '--'
-    const minutes = Math.floor(seconds / 60)
-    const remainingSeconds = seconds % 60
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-ES', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    })
-  }
 
   const handleDelete = (videoId: string) => {
     setVideos(videos.filter(v => v.id !== videoId))
