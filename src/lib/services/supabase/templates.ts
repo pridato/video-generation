@@ -10,6 +10,7 @@ export interface Template {
   likes?: number
   uses?: number
   created_at: string
+  thumbnail_url?: string
 }
 
 export interface TemplateCategory {

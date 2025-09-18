@@ -21,10 +21,13 @@ import {
   Zap,
   RefreshCw,
   AlertCircle,
-  Loader2
+  Loader2,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 import { useAuth } from '@/hooks/auth'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 
 export default function TemplatesPage() {
   const router = useRouter()
@@ -34,6 +37,8 @@ export default function TemplatesPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
   const [filteredTemplates, setFilteredTemplates] = useState<Template[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(6)
 
   const { hasAccess, createCheckoutSession } = useSubscription()
   const { profile } = useAuth()
@@ -71,6 +76,7 @@ export default function TemplatesPage() {
         }
 
         setFilteredTemplates(results)
+        setCurrentPage(1) // Reset to first page when filters change
       } catch (err) {
         console.error('Error filtering templates:', err)
         setFilteredTemplates([])
@@ -81,6 +87,18 @@ export default function TemplatesPage() {
 
     filterTemplates()
   }, [searchQuery, selectedCategory, templates, searchTemplates, getTemplatesByCategory])
+
+  // Calculate pagination
+  const totalItems = filteredTemplates.length
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const currentTemplates = filteredTemplates.slice(startIndex, endIndex)
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   /**
    * Maneja la selección de un template
@@ -117,7 +135,6 @@ export default function TemplatesPage() {
       console.error('Error liking template:', err)
     }
   }
-
   
 
   const formatNumber = (num: number | undefined): string => {
@@ -234,9 +251,10 @@ export default function TemplatesPage() {
         {/* Filters */}
         <Card className="mb-6 border-0 shadow-sm bg-card/50 backdrop-blur-sm">
           <CardContent className="p-6">
-            <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
-              <div className="flex items-center gap-4 w-full lg:w-auto">
-                <div className="relative flex-1 lg:w-80">
+            <div className="space-y-4">
+              {/* Search Bar */}
+              <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+                <div className="relative w-full sm:w-80">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
                     placeholder="Buscar templates..."
@@ -249,38 +267,42 @@ export default function TemplatesPage() {
                   )}
                 </div>
 
-                <div className="flex gap-2 overflow-x-auto">
-                  {categories.map((category) => (
-                    <Button
-                      key={category.id}
-                      variant={selectedCategory === category.id ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setSelectedCategory(category.id)}
-                      className="whitespace-nowrap"
-                    >
-                      {category.name} ({category.count})
-                    </Button>
-                  ))}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={viewMode === 'grid' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setViewMode('grid')}
+                    className="w-9 h-9 p-0"
+                  >
+                    <Grid3X3 className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === 'list' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setViewMode('list')}
+                    className="w-9 h-9 p-0"
+                  >
+                    <List className="w-4 h-4" />
+                  </Button>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={viewMode === 'grid' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setViewMode('grid')}
-                  className="w-9 h-9 p-0"
-                >
-                  <Grid3X3 className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant={viewMode === 'list' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setViewMode('list')}
-                  className="w-9 h-9 p-0"
-                >
-                  <List className="w-4 h-4" />
-                </Button>
+              {/* Category Filters */}
+              <div className="flex flex-wrap gap-2">
+                {categories.map((category) => (
+                  <Button
+                    key={category.id}
+                    variant={selectedCategory === category.id ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      setSelectedCategory(category.id)
+                      setCurrentPage(1)
+                    }}
+                    className="whitespace-nowrap"
+                  >
+                    {category.name} ({category.count})
+                  </Button>
+                ))}
               </div>
             </div>
           </CardContent>
@@ -289,13 +311,13 @@ export default function TemplatesPage() {
         {/* Templates Grid */}
         {viewMode === 'grid' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredTemplates.map((template) => (
+            {currentTemplates.map((template) => (
               <Card
                 key={template.id}
                 className="group overflow-hidden border-0 shadow-sm hover:shadow-xl transition-all duration-300 bg-card/50 backdrop-blur-sm"
               >
                 <div className="aspect-[9/16] bg-gradient-to-br from-muted/30 to-muted/10 flex items-center justify-center text-6xl relative overflow-hidden">
-                  🎬
+                  <Image src={template.thumbnail_url ? template.thumbnail_url : '/placeholder.jpg'} alt={template.name} layout="fill" objectFit="cover" />
 
                   {/* Premium Badge */}
                   {template.is_premium && (
@@ -414,7 +436,7 @@ export default function TemplatesPage() {
           <Card className="border-0 shadow-sm">
             <CardContent className="p-0">
               <div className="divide-y divide-border/50">
-                {filteredTemplates.map((template) => (
+                {currentTemplates.map((template) => (
                   <div
                     key={template.id}
                     className="p-4 hover:bg-accent/5 transition-colors"
@@ -502,6 +524,77 @@ export default function TemplatesPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <Card className="mt-8 border-0 shadow-sm">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">
+                  Mostrando {startIndex + 1}-{Math.min(endIndex, totalItems)} de {totalItems} templates
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="h-8 w-8 p-0"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                      // Show first page, current page and surrounding pages, last page
+                      const showPage =
+                        page === 1 ||
+                        page === totalPages ||
+                        (page >= currentPage - 2 && page <= currentPage + 2)
+
+                      const showEllipsis =
+                        (page === currentPage - 3 && currentPage > 4) ||
+                        (page === currentPage + 3 && currentPage < totalPages - 3)
+
+                      if (showEllipsis) {
+                        return (
+                          <span key={page} className="px-2 text-muted-foreground">
+                            ...
+                          </span>
+                        )
+                      }
+
+                      if (!showPage) return null
+
+                      return (
+                        <Button
+                          key={page}
+                          variant={currentPage === page ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => handlePageChange(page)}
+                          className="h-8 w-8 p-0"
+                        >
+                          {page}
+                        </Button>
+                      )
+                    })}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="h-8 w-8 p-0"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
