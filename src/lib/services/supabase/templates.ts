@@ -12,6 +12,13 @@ export interface Template {
   created_at: string
 }
 
+export interface TemplateCategory {
+  id: string
+  name: string
+  count: number
+  description?: string
+}
+
 export async function getTemplates(options?: {
   category?: string
   isPremium?: boolean

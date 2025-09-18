@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Header } from '@/components/common/header/header'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { useSubscription } from '@/hooks/subscription'
+import { useTemplates } from '@/lib/services/templates/templatesManager'
+import { Template } from '@/lib/services/supabase/templates'
 import {
   Search,
   Play,
@@ -13,143 +15,155 @@ import {
   Eye,
   Heart,
   Copy,
-  Filter,
   Grid3X3,
   List,
-  CheckCircle,
   Lock,
   Zap,
-  TrendingUp
+  RefreshCw,
+  AlertCircle,
+  Loader2
 } from 'lucide-react'
-
-const TEMPLATE_CATEGORIES = [
-  { id: 'all', name: 'Todos', count: 24 },
-  { id: 'tech', name: 'Tecnología', count: 8 },
-  { id: 'education', name: 'Educación', count: 6 },
-  { id: 'business', name: 'Business', count: 5 },
-  { id: 'entertainment', name: 'Entretenimiento', count: 5 }
-]
-
-const TEMPLATES = [
-  {
-    id: 'modern-tech',
-    name: 'Modern Tech',
-    description: 'Diseño limpio para tutoriales de programación',
-    category: 'tech',
-    preview: '💻',
-    color: 'from-blue-500 to-cyan-500',
-    isPremium: false,
-    views: 15420,
-    likes: 892,
-    used: 2340,
-    tags: ['Código', 'Tutorial', 'Moderno'],
-    videoUrl: '/previews/modern-tech.mp4'
-  },
-  {
-    id: 'neon-cyberpunk',
-    name: 'Neon Cyberpunk',
-    description: 'Estilo futurista con efectos neón',
-    category: 'tech',
-    preview: '🌆',
-    color: 'from-purple-500 to-pink-500',
-    isPremium: true,
-    views: 23180,
-    likes: 1204,
-    used: 1890,
-    tags: ['Futurista', 'Neón', 'Premium'],
-    videoUrl: '/previews/neon-cyberpunk.mp4'
-  },
-  {
-    id: 'minimal-education',
-    name: 'Minimal Education',
-    description: 'Enfoque en el contenido educativo',
-    category: 'education',
-    preview: '📚',
-    color: 'from-green-500 to-emerald-500',
-    isPremium: false,
-    views: 8950,
-    likes: 456,
-    used: 1123,
-    tags: ['Educativo', 'Limpio', 'Simple'],
-    videoUrl: '/previews/minimal-education.mp4'
-  },
-  {
-    id: 'business-pro',
-    name: 'Business Pro',
-    description: 'Profesional para contenido empresarial',
-    category: 'business',
-    preview: '💼',
-    color: 'from-gray-600 to-gray-800',
-    isPremium: true,
-    views: 12340,
-    likes: 678,
-    used: 890,
-    tags: ['Profesional', 'Corporativo', 'Premium'],
-    videoUrl: '/previews/business-pro.mp4'
-  },
-  {
-    id: 'colorful-fun',
-    name: 'Colorful Fun',
-    description: 'Vibrante y energético para entretenimiento',
-    category: 'entertainment',
-    preview: '🎨',
-    color: 'from-orange-500 to-red-500',
-    isPremium: false,
-    views: 19870,
-    likes: 1532,
-    used: 3210,
-    tags: ['Colorido', 'Divertido', 'Viral'],
-    videoUrl: '/previews/colorful-fun.mp4'
-  },
-  {
-    id: 'dark-mode',
-    name: 'Dark Mode Elite',
-    description: 'Elegante tema oscuro premium',
-    category: 'tech',
-    preview: '🌙',
-    color: 'from-gray-800 to-black',
-    isPremium: true,
-    views: 16750,
-    likes: 923,
-    used: 1456,
-    tags: ['Oscuro', 'Elegante', 'Premium'],
-    videoUrl: '/previews/dark-mode.mp4'
-  }
-]
+import { useAuth } from '@/hooks/auth'
+import { useRouter } from 'next/navigation'
 
 export default function TemplatesPage() {
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
+  const [filteredTemplates, setFilteredTemplates] = useState<Template[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+
   const { hasAccess, createCheckoutSession } = useSubscription()
+  const { profile } = useAuth()
+  const {
+    templates,
+    categories,
+    loading,
+    error,
+    searchTemplates,
+    getTemplatesByCategory,
+    incrementTemplateViews,
+    incrementTemplateLikes,
+    incrementTemplateUsage,
+    refreshTemplates
+  } = useTemplates()
 
-  const filteredTemplates = TEMPLATES.filter(template => {
-    const matchesSearch = template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      template.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+  // Filter templates based on search and category
+  useEffect(() => {
+    const filterTemplates = async () => {
+      setIsSearching(true)
+      try {
+        let results: Template[] = []
 
-    const matchesCategory = selectedCategory === 'all' || template.category === selectedCategory
+        if (searchQuery.trim()) {
+          results = await searchTemplates(searchQuery)
+        } else if (selectedCategory === 'all') {
+          results = templates
+        } else {
+          results = await getTemplatesByCategory(selectedCategory)
+        }
 
-    return matchesSearch && matchesCategory
-  })
+        // Apply additional filters if needed
+        if (searchQuery.trim() && selectedCategory !== 'all') {
+          results = results.filter(template => template.category === selectedCategory)
+        }
 
-  const handleUseTemplate = (template: any) => {
-    if (template.isPremium && !hasAccess('premium_templates')) {
-      // Redirect to upgrade
+        setFilteredTemplates(results)
+      } catch (err) {
+        console.error('Error filtering templates:', err)
+        setFilteredTemplates([])
+      } finally {
+        setIsSearching(false)
+      }
+    }
+
+    filterTemplates()
+  }, [searchQuery, selectedCategory, templates, searchTemplates, getTemplatesByCategory])
+
+  /**
+   * Maneja la selección de un template
+   */
+  const handleUseTemplate = async (template: Template) => {
+    if (template.is_premium && !hasAccess('premium_templates', profile?.subscription_tier || 'free')) {
       createCheckoutSession('pro', false)
       return
     }
 
-    // Use template
-    setSelectedTemplate(template.id)
-    // Redirect to create page with template
-    window.location.href = `/create?template=${template.id}`
+    try {
+      await incrementTemplateUsage(template.id)
+      setSelectedTemplate(template.id)
+      router.push(`/create?template=${template.id}`)
+    } catch (err) {
+      console.error('Error using template:', err)
+    }
   }
 
-  const handlePreview = (template: any) => {
-    // Show preview modal or navigate to preview
-    console.log('Preview template:', template.id)
+  const handlePreview = async (template: Template) => {
+    try {
+      await incrementTemplateViews(template.id)
+      console.log('Preview template:', template.id)
+      // Aquí puedes implementar un modal de preview o navegación
+    } catch (err) {
+      console.error('Error previewing template:', err)
+    }
+  }
+
+  const handleLike = async (template: Template) => {
+    try {
+      await incrementTemplateLikes(template.id)
+    } catch (err) {
+      console.error('Error liking template:', err)
+    }
+  }
+
+  
+
+  const formatNumber = (num: number | undefined): string => {
+    if (!num) return '0'
+    if (num >= 1000000) {
+      return (num / 1000000).toFixed(1) + 'M'
+    }
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1) + 'K'
+    }
+    return num.toString()
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="flex items-center justify-center py-32">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
+            <p className="text-muted-foreground">Cargando templates...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="flex items-center justify-center py-32">
+          <div className="text-center">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Error al cargar templates</h2>
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <Button onClick={refreshTemplates} variant="outline">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Reintentar
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -168,29 +182,51 @@ export default function TemplatesPage() {
                 Descubre diseños profesionales para tus videos
               </p>
             </div>
-            <Button className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-white shadow-lg">
-              <Zap className="w-4 h-4 mr-2" />
-              Crear Video
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button 
+                onClick={refreshTemplates}
+                variant="outline"
+                size="sm"
+                disabled={loading}
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                Actualizar
+              </Button>
+              <Button 
+                onClick={() => router.push('/create')}
+                className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-white shadow-lg"
+              >
+                <Zap className="w-4 h-4 mr-2" />
+                Crear Video
+              </Button>
+            </div>
           </div>
 
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 rounded-xl">
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">24</div>
+              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                {templates.length}
+              </div>
               <div className="text-sm text-muted-foreground">Templates</div>
             </div>
             <div className="text-center p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-xl">
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400">8</div>
+              <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                {templates.filter(t => t.is_premium).length}
+              </div>
               <div className="text-sm text-muted-foreground">Premium</div>
             </div>
             <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 rounded-xl">
-              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">12K+</div>
+              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                {formatNumber(templates.reduce((sum, t) => sum + (t.uses || 0), 0))}
+              </div>
               <div className="text-sm text-muted-foreground">Videos Creados</div>
             </div>
             <div className="text-center p-4 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20 rounded-xl">
-              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">98%</div>
-              <div className="text-sm text-muted-foreground">Satisfacción</div>
+              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                {formatNumber(templates.reduce((sum, t) => sum + (t.likes || 0), 0))}
+              </div>
+              <div className="text-sm text-muted-foreground">Me Gusta</div>
             </div>
           </div>
         </div>
@@ -208,10 +244,13 @@ export default function TemplatesPage() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10 border-0 bg-muted/30 focus:bg-background transition-colors"
                   />
+                  {isSearching && (
+                    <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+                  )}
                 </div>
 
                 <div className="flex gap-2 overflow-x-auto">
-                  {TEMPLATE_CATEGORIES.map((category) => (
+                  {categories.map((category) => (
                     <Button
                       key={category.id}
                       variant={selectedCategory === category.id ? 'default' : 'outline'}
@@ -256,10 +295,10 @@ export default function TemplatesPage() {
                 className="group overflow-hidden border-0 shadow-sm hover:shadow-xl transition-all duration-300 bg-card/50 backdrop-blur-sm"
               >
                 <div className="aspect-[9/16] bg-gradient-to-br from-muted/30 to-muted/10 flex items-center justify-center text-6xl relative overflow-hidden">
-                  {template.preview}
+                  🎬
 
                   {/* Premium Badge */}
-                  {template.isPremium && (
+                  {template.is_premium && (
                     <div className="absolute top-3 left-3">
                       <div className="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
                         <Crown className="w-3 h-3" />
@@ -282,9 +321,12 @@ export default function TemplatesPage() {
                       <Button
                         size="sm"
                         onClick={() => handleUseTemplate(template)}
+                        disabled={selectedTemplate === template.id}
                         className="bg-primary hover:bg-primary/90 text-white"
                       >
-                        {template.isPremium && !hasAccess('premium_templates') ? (
+                        {selectedTemplate === template.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : template.is_premium && !hasAccess('premium_templates', profile?.subscription_tier || 'free') ? (
                           <Lock className="w-4 h-4" />
                         ) : (
                           <Play className="w-4 h-4" />
@@ -297,12 +339,15 @@ export default function TemplatesPage() {
                   <div className="absolute bottom-3 left-3 right-3 flex justify-between text-white text-xs">
                     <div className="bg-black/70 px-2 py-1 rounded flex items-center gap-1">
                       <Eye className="w-3 h-3" />
-                      {(template.views / 1000).toFixed(1)}K
+                      {formatNumber(template.uses)}
                     </div>
-                    <div className="bg-black/70 px-2 py-1 rounded flex items-center gap-1">
+                    <button
+                      onClick={() => handleLike(template)}
+                      className="bg-black/70 px-2 py-1 rounded flex items-center gap-1 hover:bg-black/90 transition-colors"
+                    >
                       <Heart className="w-3 h-3" />
-                      {template.likes}
-                    </div>
+                      {formatNumber(template.likes)}
+                    </button>
                   </div>
                 </div>
 
@@ -314,15 +359,13 @@ export default function TemplatesPage() {
                     <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
                       {template.description}
                     </p>
-                    <div className="flex flex-wrap gap-1">
-                      {template.tags.slice(0, 2).map((tag) => (
-                        <span
-                          key={tag}
-                          className="text-xs bg-muted px-2 py-1 rounded-full"
-                        >
-                          {tag}
-                        </span>
-                      ))}
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground capitalize">
+                        {template.category}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {new Date(template.created_at).toLocaleDateString()}
+                      </span>
                     </div>
                   </div>
 
@@ -339,16 +382,18 @@ export default function TemplatesPage() {
                     <Button
                       size="sm"
                       onClick={() => handleUseTemplate(template)}
-                      disabled={template.isPremium && !hasAccess('premium_templates')}
+                      disabled={template.is_premium && !hasAccess('premium_templates', profile?.subscription_tier || 'free') || selectedTemplate === template.id}
                       className={`
                         flex-1 h-8 text-xs
-                        ${template.isPremium && !hasAccess('premium_templates')
+                        ${template.is_premium && !hasAccess('premium_templates', profile?.subscription_tier || 'free')
                           ? 'bg-amber-500 hover:bg-amber-600 text-white'
                           : 'bg-primary hover:bg-primary/90 text-white'
                         }
                       `}
                     >
-                      {template.isPremium && !hasAccess('premium_templates') ? (
+                      {selectedTemplate === template.id ? (
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                      ) : template.is_premium && !hasAccess('premium_templates', profile?.subscription_tier || 'free') ? (
                         <>
                           <Crown className="w-3 h-3 mr-1" />
                           Upgrade
@@ -376,8 +421,8 @@ export default function TemplatesPage() {
                   >
                     <div className="flex items-center gap-4">
                       <div className="w-16 h-16 bg-gradient-to-br from-muted/30 to-muted/10 rounded-xl flex items-center justify-center text-2xl relative">
-                        {template.preview}
-                        {template.isPremium && (
+                        🎬
+                        {template.is_premium && (
                           <div className="absolute -top-1 -right-1">
                             <Crown className="w-4 h-4 text-amber-500" />
                           </div>
@@ -393,29 +438,28 @@ export default function TemplatesPage() {
                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <Eye className="w-3 h-3" />
-                              {(template.views / 1000).toFixed(1)}K
+                              {formatNumber(template.uses)}
                             </span>
-                            <span className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleLike(template)}
+                              className="flex items-center gap-1 hover:text-foreground transition-colors"
+                            >
                               <Heart className="w-3 h-3" />
-                              {template.likes}
-                            </span>
+                              {formatNumber(template.likes)}
+                            </button>
                             <span className="flex items-center gap-1">
                               <Copy className="w-3 h-3" />
-                              {template.used}
+                              {formatNumber(template.uses)}
                             </span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className="flex gap-1">
-                            {template.tags.map((tag) => (
-                              <span
-                                key={tag}
-                                className="text-xs bg-muted px-2 py-1 rounded-full"
-                              >
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
+                          <span className="text-xs text-muted-foreground capitalize bg-muted px-2 py-1 rounded-full">
+                            {template.category}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(template.created_at).toLocaleDateString()}
+                          </span>
                         </div>
                       </div>
 
@@ -431,16 +475,18 @@ export default function TemplatesPage() {
                         <Button
                           size="sm"
                           onClick={() => handleUseTemplate(template)}
-                          disabled={template.isPremium && !hasAccess('premium_templates')}
+                          disabled={template.is_premium && !hasAccess('premium_templates', profile?.subscription_tier || 'free') || selectedTemplate === template.id}
                           className={`
                             h-8
-                            ${template.isPremium && !hasAccess('premium_templates')
+                            ${template.is_premium && !hasAccess('premium_templates', profile?.subscription_tier || 'free')
                               ? 'bg-amber-500 hover:bg-amber-600 text-white'
                               : 'bg-primary hover:bg-primary/90 text-white'
                             }
                           `}
                         >
-                          {template.isPremium && !hasAccess('premium_templates') ? (
+                          {selectedTemplate === template.id ? (
+                            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                          ) : template.is_premium && !hasAccess('premium_templates', profile?.subscription_tier || 'free') ? (
                             <>
                               <Crown className="w-3 h-3 mr-1" />
                               Upgrade
@@ -462,7 +508,7 @@ export default function TemplatesPage() {
         )}
 
         {/* Empty State */}
-        {filteredTemplates.length === 0 && (
+        {filteredTemplates.length === 0 && !isSearching && (
           <Card className="border-0 shadow-sm">
             <CardContent className="p-16 text-center">
               <div className="w-20 h-20 bg-gradient-to-br from-muted to-muted/50 rounded-2xl flex items-center justify-center mx-auto mb-6">
@@ -483,6 +529,16 @@ export default function TemplatesPage() {
               </Button>
             </CardContent>
           </Card>
+        )}
+
+        {/* Loading State for Search */}
+        {isSearching && (
+          <div className="flex justify-center py-12">
+            <div className="text-center">
+              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
+              <p className="text-muted-foreground">Buscando templates...</p>
+            </div>
+          </div>
         )}
 
         {/* CTA Section */}
