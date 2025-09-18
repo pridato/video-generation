@@ -24,6 +24,7 @@ import {
   Sparkles
 } from 'lucide-react'
 import { useAuth } from '@/hooks/auth'
+import { Header } from '@/components/common/header'
 
 // Mock analytics data - in real app this would come from API
 const ANALYTICS_DATA = {
@@ -116,7 +117,7 @@ export default function AnalyticsPage() {
   const [selectedMetric, setSelectedMetric] = useState('views')
   const [isRefreshing, setIsRefreshing] = useState(false)
 
-  const {user, profile} = useAuth()
+  const { user, profile } = useAuth()
 
   useEffect(() => {
     if (typeof profile?.subscription_tier !== 'string') return
@@ -134,12 +135,14 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/5 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="flex items-center justify-center py-32">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
       </div>
     )
   }
-
 
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
@@ -161,19 +164,21 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/5">
-      <div className="container mx-auto p-6">
+    <div className="min-h-screen bg-background">
+      <Header />
+      
+      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-primary to-secondary rounded-lg flex items-center justify-center">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-lg flex items-center justify-center">
                 <BarChart3 className="w-5 h-5 text-white" />
               </div>
-              <h1 className="text-3xl font-bold">Analytics</h1>
-              <div className="flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 rounded-full">
-                <Crown className="w-3 h-3 text-yellow-600" />
-                <span className="text-xs font-medium text-yellow-700">PRO</span>
+              <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20 rounded-full">
+                <Crown className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium text-primary">PRO</span>
               </div>
             </div>
             <p className="text-muted-foreground">
@@ -181,13 +186,13 @@ export default function AnalyticsPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3 mt-4 lg:mt-0">
-            <div className="flex items-center gap-2 p-1 bg-muted rounded-lg">
+          <div className="flex items-center gap-3 mt-6 lg:mt-0">
+            <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-lg border">
               <Button
                 variant={timeRange === '7d' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setTimeRange('7d')}
-                className="text-xs"
+                className="text-sm h-8"
               >
                 7d
               </Button>
@@ -195,7 +200,7 @@ export default function AnalyticsPage() {
                 variant={timeRange === '30d' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setTimeRange('30d')}
-                className="text-xs"
+                className="text-sm h-8"
               >
                 30d
               </Button>
@@ -203,7 +208,7 @@ export default function AnalyticsPage() {
                 variant={timeRange === '90d' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setTimeRange('90d')}
-                className="text-xs"
+                className="text-sm h-8"
               >
                 90d
               </Button>
@@ -214,7 +219,7 @@ export default function AnalyticsPage() {
               size="sm"
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="gap-2"
+              className="gap-2 h-8"
             >
               <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
               Actualizar
@@ -224,73 +229,73 @@ export default function AnalyticsPage() {
 
         {/* Overview Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="card-glow border-0">
+          <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Visualizaciones</p>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Visualizaciones</p>
                   <p className="text-2xl font-bold">{formatNumber(ANALYTICS_DATA.overview.totalViews)}</p>
-                  <div className="flex items-center gap-1 mt-1">
+                  <div className="flex items-center gap-1 mt-2">
                     <ArrowUpRight className="w-3 h-3 text-green-500" />
-                    <span className="text-xs text-green-500">+12.5%</span>
+                    <span className="text-xs text-green-500 font-medium">+12.5%</span>
                   </div>
                 </div>
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
-                  <Eye className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-xl flex items-center justify-center">
+                  <Eye className="w-6 h-6 text-blue-500" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="card-glow border-0">
+          <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Me Gusta</p>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Me Gusta</p>
                   <p className="text-2xl font-bold">{formatNumber(ANALYTICS_DATA.overview.totalLikes)}</p>
-                  <div className="flex items-center gap-1 mt-1">
+                  <div className="flex items-center gap-1 mt-2">
                     <ArrowUpRight className="w-3 h-3 text-green-500" />
-                    <span className="text-xs text-green-500">+8.3%</span>
+                    <span className="text-xs text-green-500 font-medium">+8.3%</span>
                   </div>
                 </div>
-                <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-500 rounded-xl flex items-center justify-center">
-                  <Heart className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 bg-gradient-to-br from-red-500/20 to-pink-500/20 rounded-xl flex items-center justify-center">
+                  <Heart className="w-6 h-6 text-red-500" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="card-glow border-0">
+          <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Compartidos</p>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Compartidos</p>
                   <p className="text-2xl font-bold">{formatNumber(ANALYTICS_DATA.overview.totalShares)}</p>
-                  <div className="flex items-center gap-1 mt-1">
+                  <div className="flex items-center gap-1 mt-2">
                     <ArrowUpRight className="w-3 h-3 text-green-500" />
-                    <span className="text-xs text-green-500">+15.7%</span>
+                    <span className="text-xs text-green-500 font-medium">+15.7%</span>
                   </div>
                 </div>
-                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center">
-                  <Share2 className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl flex items-center justify-center">
+                  <Share2 className="w-6 h-6 text-green-500" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="card-glow border-0">
+          <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Tiempo Promedio</p>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Tiempo Promedio</p>
                   <p className="text-2xl font-bold">{ANALYTICS_DATA.overview.avgWatchTime}s</p>
-                  <div className="flex items-center gap-1 mt-1">
+                  <div className="flex items-center gap-1 mt-2">
                     <ArrowUpRight className="w-3 h-3 text-green-500" />
-                    <span className="text-xs text-green-500">+4.2%</span>
+                    <span className="text-xs text-green-500 font-medium">+4.2%</span>
                   </div>
                 </div>
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl flex items-center justify-center">
+                  <Clock className="w-6 h-6 text-purple-500" />
                 </div>
               </div>
             </CardContent>
@@ -299,21 +304,21 @@ export default function AnalyticsPage() {
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <Card className="card-glow border-0 lg:col-span-2">
-            <CardHeader>
+          <Card className="border-border/50 bg-card/50 backdrop-blur-sm lg:col-span-2">
+            <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5" />
+                <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-primary" />
                   Engagement en el Tiempo
                 </CardTitle>
                 <div className="flex items-center gap-2">
                   {['views', 'likes', 'shares'].map((metric) => (
                     <Button
                       key={metric}
-                      variant={selectedMetric === metric ? 'default' : 'outline'}
+                      variant={selectedMetric === metric ? 'default' : 'ghost'}
                       size="sm"
                       onClick={() => setSelectedMetric(metric)}
-                      className="text-xs capitalize"
+                      className="text-xs h-8"
                     >
                       {metric === 'views' ? 'Vistas' : metric === 'likes' ? 'Likes' : 'Shares'}
                     </Button>
@@ -334,7 +339,7 @@ export default function AnalyticsPage() {
                         className="w-full bg-gradient-to-t from-primary to-secondary rounded-t-lg transition-all duration-500 ease-out opacity-80 hover:opacity-100"
                         style={{ height: `${height}%` }}
                       />
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-muted-foreground font-medium">
                         {new Date(day.date).getDate()}
                       </span>
                     </div>
@@ -344,10 +349,10 @@ export default function AnalyticsPage() {
             </CardContent>
           </Card>
 
-          <Card className="card-glow border-0">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="w-5 h-5" />
+          <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <Users className="w-5 h-5 text-primary" />
                 Métricas Clave
               </CardTitle>
             </CardHeader>
@@ -355,7 +360,7 @@ export default function AnalyticsPage() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium">Retención Promedio</span>
-                  <span className="text-sm text-muted-foreground">67%</span>
+                  <span className="text-sm font-semibold">67%</span>
                 </div>
                 <Progress value={67} className="h-2" />
               </div>
@@ -363,7 +368,7 @@ export default function AnalyticsPage() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium">Click-Through Rate</span>
-                  <span className="text-sm text-muted-foreground">9.2%</span>
+                  <span className="text-sm font-semibold">9.2%</span>
                 </div>
                 <Progress value={92} className="h-2" />
               </div>
@@ -371,12 +376,12 @@ export default function AnalyticsPage() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium">Engagement Rate</span>
-                  <span className="text-sm text-muted-foreground">5.8%</span>
+                  <span className="text-sm font-semibold">5.8%</span>
                 </div>
                 <Progress value={58} className="h-2" />
               </div>
 
-              <div className="pt-4 border-t">
+              <div className="pt-4 border-t border-border/50">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Ingresos Totales</span>
                   <span className="text-lg font-bold text-green-600">
@@ -389,14 +394,14 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Video Performance */}
-        <Card className="card-glow border-0">
-          <CardHeader>
+        <Card className="border-border/50 bg-card/50 backdrop-blur-sm mb-6">
+          <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <PlayCircle className="w-5 h-5" />
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <PlayCircle className="w-5 h-5 text-primary" />
                 Rendimiento de Videos
               </CardTitle>
-              <Button variant="outline" size="sm" className="gap-2">
+              <Button variant="outline" size="sm" className="gap-2 h-8">
                 <Filter className="w-4 h-4" />
                 Filtrar
               </Button>
@@ -407,9 +412,9 @@ export default function AnalyticsPage() {
               {ANALYTICS_DATA.videos.map((video) => (
                 <div
                   key={video.id}
-                  className="flex items-center gap-4 p-4 border border-border rounded-xl hover:bg-muted/50 transition-colors"
+                  className="flex items-center gap-4 p-4 border border-border/50 rounded-lg hover:bg-muted/30 transition-colors"
                 >
-                  <div className="w-20 h-12 bg-muted rounded-lg flex items-center justify-center">
+                  <div className="w-20 h-12 bg-muted/50 rounded-lg flex items-center justify-center">
                     <PlayCircle className="w-6 h-6 text-muted-foreground" />
                   </div>
 
@@ -422,26 +427,26 @@ export default function AnalyticsPage() {
 
                   <div className="flex items-center gap-6 text-sm">
                     <div className="text-center">
-                      <div className="font-medium">{formatNumber(video.views)}</div>
-                      <div className="text-muted-foreground">Vistas</div>
+                      <div className="font-semibold">{formatNumber(video.views)}</div>
+                      <div className="text-muted-foreground text-xs">Vistas</div>
                     </div>
 
                     <div className="text-center">
-                      <div className="font-medium">{formatNumber(video.likes)}</div>
-                      <div className="text-muted-foreground">Likes</div>
+                      <div className="font-semibold">{formatNumber(video.likes)}</div>
+                      <div className="text-muted-foreground text-xs">Likes</div>
                     </div>
 
                     <div className="text-center">
-                      <div className="font-medium">{video.watchTime}s</div>
-                      <div className="text-muted-foreground">Tiempo</div>
+                      <div className="font-semibold">{video.watchTime}s</div>
+                      <div className="text-muted-foreground text-xs">Tiempo</div>
                     </div>
 
                     <div className="text-center">
-                      <div className="font-medium text-green-600">€{video.revenue.toFixed(2)}</div>
-                      <div className="text-muted-foreground">Ingresos</div>
+                      <div className="font-semibold text-green-600">€{video.revenue.toFixed(2)}</div>
+                      <div className="text-muted-foreground text-xs">Ingresos</div>
                     </div>
 
-                    <div className={`flex items-center gap-1 px-2 py-1 rounded-full bg-gradient-to-r ${getPerformanceColor(video.performance)}/20`}>
+                    <div className={`flex items-center gap-1 px-3 py-1 rounded-full bg-gradient-to-r ${getPerformanceColor(video.performance)}/20 border border-current/20`}>
                       <PerformanceIcon performance={video.performance} />
                       <span className="text-xs font-medium capitalize">{video.performance}</span>
                     </div>
@@ -457,38 +462,46 @@ export default function AnalyticsPage() {
         </Card>
 
         {/* AI Insights */}
-        <Card className="card-glow border-0 mt-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-primary" />
               Insights de IA
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="p-4 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-xl">
-                <h3 className="font-semibold mb-2 text-blue-700">🚀 Oportunidad de Crecimiento</h3>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="p-4 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-lg">
+                <h3 className="font-semibold mb-2 text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                  🚀 Oportunidad de Crecimiento
+                </h3>
                 <p className="text-sm text-muted-foreground">
                   Tus videos sobre React tienen un 23% más engagement. Considera crear más contenido técnico para maximizar el alcance.
                 </p>
               </div>
 
-              <div className="p-4 bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-xl">
-                <h3 className="font-semibold mb-2 text-green-700">⏰ Mejor Horario</h3>
+              <div className="p-4 bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-lg">
+                <h3 className="font-semibold mb-2 text-green-700 dark:text-green-300 flex items-center gap-2">
+                  ⏰ Mejor Horario
+                </h3>
                 <p className="text-sm text-muted-foreground">
                   Tus videos publicados entre 18:00-20:00 reciben un 31% más de visualizaciones. Programa tus próximas publicaciones en este horario.
                 </p>
               </div>
 
-              <div className="p-4 bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-xl">
-                <h3 className="font-semibold mb-2 text-purple-700">📱 Optimización Móvil</h3>
+              <div className="p-4 bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-lg">
+                <h3 className="font-semibold mb-2 text-purple-700 dark:text-purple-300 flex items-center gap-2">
+                  📱 Optimización Móvil
+                </h3>
                 <p className="text-sm text-muted-foreground">
                   El 78% de tus visualizaciones vienen de móvil. Asegúrate de que tus títulos sean legibles en pantallas pequeñas.
                 </p>
               </div>
 
-              <div className="p-4 bg-gradient-to-br from-orange-500/10 to-red-500/10 border border-orange-500/20 rounded-xl">
-                <h3 className="font-semibold mb-2 text-orange-700">🎯 Duración Óptima</h3>
+              <div className="p-4 bg-gradient-to-br from-orange-500/10 to-red-500/10 border border-orange-500/20 rounded-lg">
+                <h3 className="font-semibold mb-2 text-orange-700 dark:text-orange-300 flex items-center gap-2">
+                  🎯 Duración Óptima
+                </h3>
                 <p className="text-sm text-muted-foreground">
                   Videos de 45-60 segundos tienen la mejor retención (67%). Mantén este rango para maximizar el engagement.
                 </p>
@@ -496,7 +509,7 @@ export default function AnalyticsPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </main>
     </div>
   )
 }
