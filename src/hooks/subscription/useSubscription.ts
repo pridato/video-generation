@@ -6,13 +6,19 @@ import { createClient } from '@/lib/services/supabase/client'
 export interface UserProfile {
   id: string
   email: string
-  subscription_tier: 'FREE' | 'CREATOR' | 'PRO' | 'ENTERPRISE'
+  full_name?: string
+  avatar_url?: string
+  subscription_tier: 'free' | 'pro' | 'enterprise'
+  monthly_videos_used: number
+  monthly_limit: number
+  total_videos_created: number
+  content_niche?: string
+  target_audience?: string
+  preferred_language: string
+  last_video_created_at?: string
+  brand_colors: Record<string, any>
   stripe_customer_id?: string
-  subscription_status?: 'active' | 'canceled' | 'past_due' | 'incomplete'
-  is_annual?: boolean
-  plan_id?: string
-  credits: number
-  videos_used: number
+  subscription_status?: 'active' | 'canceled' | 'past_due' | 'incomplete' | 'inactive'
   created_at: string
   updated_at: string
 }
@@ -37,7 +43,7 @@ export function useSubscription() {
         // Get user profile from auth.profiles table
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, email, subscription_tier, stripe_customer_id, subscription_status, credits, videos_used, created_at, updated_at')
+          .select('id, email, full_name, avatar_url, subscription_tier, monthly_videos_used, monthly_limit, total_videos_created, content_niche, target_audience, preferred_language, last_video_created_at, brand_colors, stripe_customer_id, subscription_status, created_at, updated_at')
           .eq('id', authUser.id)
           .single()
 
@@ -49,15 +55,17 @@ export function useSubscription() {
               .insert({
                 id: authUser.id,
                 email: authUser.email,
-                subscription_tier: 'FREE',
-                credits: 0,
-                videos_used: 0
+                subscription_tier: 'free',
+                monthly_videos_used: 0,
+                monthly_limit: 5,
+                total_videos_created: 0,
+                preferred_language: 'es',
+                brand_colors: {}
               })
               .select()
               .single()
 
             if (insertError) throw insertError
-            newUser.plan_id = crypto.randomUUID()
             setUser(newUser)
           } else {
             throw error
@@ -138,20 +146,18 @@ export function useSubscription() {
     }
   }
 
-  const isActive = user?.subscription_status === 'active' || user?.subscription_tier !== 'FREE'
+  const isActive = user?.subscription_status === 'active' || user?.subscription_tier !== 'free'
   const isPastDue = user?.subscription_status === 'past_due'
   const isCanceled = user?.subscription_status === 'canceled'
 
   // Helper functions to check plan access based on subscription_tier
   const hasAccess = (feature: string) => {
-    switch (feature) {
-      case 'FREE':
-        return ['basic_templates']
-      case 'CREATOR':
-        return ['basic_templates', 'hd_resolution', '50_videos', 'premium_voices']
-      case 'PRO':
-        return ['basic_templates', 'premium_templates', 'hd_resolution', '4k_resolution', 'analytics', '200_videos', 'premium_voices', 'PRO']
-      case 'ENTERPRISE':
+    switch (user?.subscription_tier) {
+      case 'free':
+        return ['basic_templates'].includes(feature)
+      case 'pro':
+        return ['basic_templates', 'premium_templates', 'hd_resolution', '4k_resolution', 'analytics', 'premium_voices'].includes(feature)
+      case 'enterprise':
         return true // All features
       default:
         return false
@@ -160,27 +166,20 @@ export function useSubscription() {
 
   const getVideoLimit = () => {
     if (!user) return 5 // Not logged in
-
-    switch (user.subscription_tier) {
-      case 'FREE':
-        return 5
-      case 'CREATOR':
-        return 50
-      case 'PRO':
-        return 200
-      case 'ENTERPRISE':
-        return -1 // Unlimited
-      default:
-        return 5
-    }
+    return user.monthly_limit
   }
 
-  const getCredits = () => {
-    return user?.credits || 0
+  const getRemainingVideos = () => {
+    if (!user) return 0
+    return Math.max(0, user.monthly_limit - user.monthly_videos_used)
   }
 
   const getVideosUsed = () => {
-    return user?.videos_used || 0
+    return user?.monthly_videos_used || 0
+  }
+
+  const getTotalVideosCreated = () => {
+    return user?.total_videos_created || 0
   }
 
   const updateUserProfile = async (updates: Partial<UserProfile>) => {
@@ -213,7 +212,8 @@ export function useSubscription() {
     isCanceled,
     hasAccess,
     getVideoLimit,
-    getCredits,
+    getRemainingVideos,
+    getTotalVideosCreated,
     getVideosUsed,
     updateUserProfile,
     createCheckoutSession,

@@ -85,7 +85,8 @@ export async function GET(request: NextRequest) {
       const plan = planDetails[planId as keyof typeof planDetails] || planDetails.pro
 
       // Actualizar perfil del usuario en Supabase
-      const subscriptionTier = planId.toUpperCase() as 'STARTER' | 'PRO' | 'ENTERPRISE'
+      const subscriptionTier = planId === 'starter' ? 'pro' : planId
+      const newMonthlyLimit = plan.credits
 
       await (await supabase)
         .from('profiles')
@@ -93,9 +94,7 @@ export async function GET(request: NextRequest) {
           subscription_tier: subscriptionTier,
           subscription_status: 'active',
           stripe_customer_id: session.customer as string,
-          plan_id: planId,
-          is_annual: isAnnual,
-          credits: plan.credits,
+          monthly_limit: newMonthlyLimit,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id)

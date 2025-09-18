@@ -111,7 +111,7 @@ export default function PaymentSuccessPage() {
 
       // Actualizar perfil sin await en supabase
       if (user?.id) {
-        await supabase.from('profiles').update({ subscription_tier: planId }).eq('id', user.id)
+        await supabase.from('profiles').update({ subscription_tier: planId === 'starter' ? 'pro' : planId }).eq('id', user.id)
       }
     }
 

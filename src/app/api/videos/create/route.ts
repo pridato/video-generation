@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     if (updateError) {
       console.error('Error updating profile:', updateError)
       return NextResponse.json(
-        { error: 'Failed to update user credits' },
+        { error: 'Failed to update user usage' },
         { status: 500 }
       )
     }
@@ -129,7 +129,9 @@ export async function POST(request: NextRequest) {
         status: video.status,
         created_at: video.created_at
       },
-      credits_remaining: profile.credits_remaining - 1,
+      videos_remaining: profile.monthly_limit - (profile.monthly_videos_used + 1),
+      monthly_videos_used: profile.monthly_videos_used + 1,
+      monthly_limit: profile.monthly_limit,
       message: 'Video creation started successfully'
     })
 

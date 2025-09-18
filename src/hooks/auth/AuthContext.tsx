@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { createClient } from '@/lib/services/supabase/client'
 import type { SubscriptionTier } from '@/lib/subscription'
@@ -11,14 +11,18 @@ interface UserProfile {
   full_name?: string
   avatar_url?: string
   subscription_tier: SubscriptionTier
-  usage_count: number
-  credits_remaining: number
+  monthly_videos_used: number
+  monthly_limit: number
+  total_videos_created: number
+  content_niche?: string
+  target_audience?: string
+  preferred_language: string
+  last_video_created_at?: string
+  brand_colors: Record<string, unknown>
   created_at: string
   updated_at: string
   stripe_customer_id?: string
   subscription_status?: string
-  credits: number
-  videos_used: number
 }
 
 interface AuthContextType {
@@ -39,21 +43,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const supabase = createClient()
 
-  const fetchProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
+  const fetchProfile = useCallback(
+    async (userId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, email, full_name, avatar_url, subscription_tier, monthly_videos_used, monthly_limit, total_videos_created, content_niche, target_audience, preferred_language, last_video_created_at, brand_colors, created_at, updated_at, stripe_customer_id, subscription_status')
+          .eq('id', userId)
+          .single()
 
-      if (error) throw error
-      return data as UserProfile
-    } catch (error) {
-      console.error('Error fetching profile:', error)
-      return null
-    }
-  }
+        if (error) throw error
+        return data as UserProfile
+      } catch (error) {
+        console.error('Error fetching profile:', error)
+        return null
+      }
+    },
+    [supabase]
+  )
 
   const refreshProfile = async () => {
     if (user) {
@@ -103,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     )
 
     return () => subscription.unsubscribe()
-  }, [supabase.auth])
+  }, [fetchProfile, supabase.auth])
 
   return (
     <AuthContext.Provider
