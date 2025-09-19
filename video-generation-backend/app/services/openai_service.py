@@ -172,7 +172,6 @@ class OpenAIService:
         """
         response = self.client.audio.speech.create(
             model="gpt-4o-mini-tts",
-            # viene directo del fronten
             voice=voice_id,  # type: ignore
             input=script,
         )

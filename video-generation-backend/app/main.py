@@ -9,6 +9,7 @@ from app.models import AudioGenerationRequest, AudioGenerationResponse, AudioGen
 from app.services.openai_service import openai_service
 import os
 from pydub import AudioSegment
+from app.models import AudioSegmentResponse
 
 
 # Configurar logging
@@ -161,22 +162,17 @@ async def generar_voz(request: AudioGenerationRequest):
         # --- 5. Devolver JSON ---
         audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
 
-        # Convertir segmentos a AudioSegmentResponse si es necesario
+        # Simplificar conversión de segmentos
         segmentos = []
-        if request.enhanced_script:
-            if request.enhanced_script.segmentos and hasattr(request.enhanced_script, "segmentos"):
-                for seg in request.enhanced_script.segmentos:
-                    if isinstance(seg, dict):
-                        # Si es dict, inicializar AudioSegmentResponse desde dict
-                        from app.models import AudioSegmentResponse
-                        segmentos.append(AudioSegmentResponse(**seg))
-                    elif hasattr(seg, "dict"):
-                        # Si es Pydantic model, convertir a dict y luego a AudioSegmentResponse
-                        from app.models import AudioSegmentResponse
-                        segmentos.append(AudioSegmentResponse(**seg.dict()))
-                    else:
-                        # Si ya es AudioSegmentResponse, agregar directamente
-                        segmentos.append(seg)
+        if request.enhanced_script and request.enhanced_script.segmentos:
+            for seg in request.enhanced_script.segmentos:
+                segmentos.append(AudioSegmentResponse(
+                    text=seg.texto,
+                    type=seg.tipo,
+                    emotion=getattr(seg, 'emocion', 'neutral'),
+                    duration=getattr(seg, 'duracion', 1.0),
+                    speed=getattr(seg, 'velocidad', 1.0)
+                ))
 
         return AudioGenerationResponse(
             audio_base64=audio_base64,
