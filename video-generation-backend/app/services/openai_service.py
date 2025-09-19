@@ -165,6 +165,20 @@ class OpenAIService:
             else:
                 raise ValueError(f"Error procesando el script: {str(e)}")
 
+    async def generar_tts(self, script: str, voice_id: str) -> bytes:
+        """
+        Genera audio MP3 desde un script con la voz indicada.
+        La validación de voice_id la hace el frontend, aquí solo pasamos el valor a OpenAI.
+        """
+        response = self.client.audio.speech.create(
+            model="gpt-4o-mini-tts",
+            # viene directo del fronten
+            voice=voice_id,  # type: ignore
+            input=script,
+        )
+
+        return response.read()
+
 
 # Instancia singleton del servicio
 openai_service = OpenAIService() if settings.openai_configured else None

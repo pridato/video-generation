@@ -1,10 +1,15 @@
+import base64
+import io
 import logging
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.config import settings
-from app.models import ScriptRequest, ScriptResponse, HealthResponse, ErrorResponse
+from app.models import AudioGenerationRequest, AudioGenerationResponse, AudioGenerationResponse, ScriptRequest, ScriptResponse, HealthResponse, ErrorResponse
 from app.services.openai_service import openai_service
+import os
+from pydub import AudioSegment
+
 
 # Configurar logging
 logging.basicConfig(
@@ -30,6 +35,10 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
+
+# Directorio para almacenar audios generados
+AUDIO_DIR = "audios"
+os.makedirs(AUDIO_DIR, exist_ok=True)
 
 
 # Manejador de errores global
@@ -112,6 +121,82 @@ async def mejorar_script(request: ScriptRequest):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error interno procesando el script"
+        )
+
+
+@app.post("/generar-voz", tags=["TTS"])
+async def generar_voz(request: AudioGenerationRequest):
+    """
+    Genera un archivo MP3 con el script usando la voz seleccionada.
+    - Guarda el MP3 en backend (carpeta /audios).
+    - Devuelve JSON con metadatos + base64.
+    """
+    try:
+        if not openai_service:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Servicio de IA no disponible. Configurar OPENAI_API_KEY."
+            )
+
+        # --- 1. Construir texto ---
+        script_text = request.script
+
+        # --- 2. Generar TTS ---
+        audio_bytes = await openai_service.generar_tts(
+            script=script_text,
+            voice_id=request.voice_id.value
+        )
+
+        # --- 3. Guardar en backend ---
+        file_name = f"{request.video_id}.mp3"
+        file_path = os.path.join(AUDIO_DIR, file_name)
+        with open(file_path, "wb") as f:
+            f.write(audio_bytes)
+
+        # --- 4. Respuesta JSON ---
+        audio_segment = AudioSegment.from_file(
+            io.BytesIO(audio_bytes), format="mp3")
+        duration_sec = round(len(audio_segment) / 1000, 2)
+
+        # --- 5. Devolver JSON ---
+        audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
+
+        # Convertir segmentos a AudioSegmentResponse si es necesario
+        segmentos = []
+        if request.enhanced_script:
+            if request.enhanced_script.segmentos and hasattr(request.enhanced_script, "segmentos"):
+                for seg in request.enhanced_script.segmentos:
+                    if isinstance(seg, dict):
+                        # Si es dict, inicializar AudioSegmentResponse desde dict
+                        from app.models import AudioSegmentResponse
+                        segmentos.append(AudioSegmentResponse(**seg))
+                    elif hasattr(seg, "dict"):
+                        # Si es Pydantic model, convertir a dict y luego a AudioSegmentResponse
+                        from app.models import AudioSegmentResponse
+                        segmentos.append(AudioSegmentResponse(**seg.dict()))
+                    else:
+                        # Si ya es AudioSegmentResponse, agregar directamente
+                        segmentos.append(seg)
+
+        return AudioGenerationResponse(
+            audio_base64=audio_base64,
+            segments=segmentos,
+            filename=file_name,
+            duration=duration_sec,
+            voice_id=request.voice_id.value
+        )
+
+    except ValueError as e:
+        logger.warning(f"Error de validación: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error generando voz: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error interno generando voz"
         )
 
 
