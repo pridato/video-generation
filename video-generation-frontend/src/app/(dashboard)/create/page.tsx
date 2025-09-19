@@ -136,6 +136,13 @@ const VOICES = [
   },
 ]
 
+const SPEED_OPTIONS = [
+  { value: 0.75, label: 'Lenta (0.75x)' },
+  { value: 1.0, label: 'Normal (1.0x)' },
+  { value: 1.25, label: 'Rápida (1.25x)' },
+  { value: 1.5, label: 'Muy rápida (1.5x)' }
+]
+
 const SCRIPT_PLACEHOLDERS = [
   "Hoy voy a explicarte cómo crear tu primera aplicación en React paso a paso...",
   "¿Sabías que el 90% de los desarrolladores usan Git pero solo conocen 5 comandos?",
@@ -154,10 +161,30 @@ export default function CreatePage() {
   const [scriptMetadata, setScriptMetadata] = useState<ScriptResponse | null>(null)
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
   const [selectedVoice, setSelectedVoice] = useState<string | null>(null)
+  const [selectedSpeed, setSelectedSpeed] = useState(1.0)
   const [isEnhancing, setIsEnhancing] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [currentPlaceholder, setCurrentPlaceholder] = useState(0)
   const audioRef = useRef<HTMLAudioElement>(null)
+
+  // Función para contar palabras
+  const countWords = (text: string) => {
+    return text.trim().split(/\s+/).filter(word => word.length > 0).length
+  }
+
+  // Función para calcular duración estimada
+  const calculateDuration = (text: string, speed: number) => {
+    const words = countWords(text)
+    // Velocidad promedio de habla: 150 palabras por minuto
+    const wordsPerMinute = 150
+    const baseDurationMinutes = words / wordsPerMinute
+    const baseDurationSeconds = baseDurationMinutes * 60
+
+    // Ajustar por velocidad de reproducción
+    const adjustedDuration = baseDurationSeconds / speed
+
+    return Math.round(adjustedDuration)
+  }
 
   /**
    * Maneja la mejora del script usando IA
@@ -206,6 +233,7 @@ export default function CreatePage() {
   const handlePlayVoicePreview = (preview: string) => {
     if (audioRef.current) {
       audioRef.current.src = preview
+      audioRef.current.playbackRate = selectedSpeed
       audioRef.current.play().catch(() => {
         error('No se pudo reproducir la muestra de voz')
       })
@@ -257,7 +285,8 @@ export default function CreatePage() {
           templateId: selectedTemplate,
           voiceId: selectedVoice,
           categoria: selectedCategoria,
-          enhanceScript: !!enhancedScript
+          enhanceScript: !!enhancedScript,
+          speed: selectedSpeed
         }),
       })
 
@@ -345,28 +374,6 @@ export default function CreatePage() {
                   </p>
                 </div>
 
-                {/* Selector de categoría */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium mb-3">Categoría del contenido</label>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                    {CATEGORIAS.map((categoria) => (
-                      <button
-                        key={categoria.id}
-                        onClick={() => setSelectedCategoria(categoria.id)}
-                        className={`
-                          p-3 rounded-lg border-2 text-sm font-medium transition-all
-                          ${selectedCategoria === categoria.id
-                            ? 'border-primary bg-primary/10 text-primary'
-                            : 'border-border hover:border-primary/50 hover:bg-primary/5'
-                          }
-                        `}
-                      >
-                        <div className="text-lg mb-1">{categoria.emoji}</div>
-                        <div>{categoria.name}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
 
                 <div className="relative">
                   <textarea
@@ -381,17 +388,20 @@ export default function CreatePage() {
                     }}
                   />
                   <div className="absolute bottom-4 right-4 text-sm text-muted-foreground">
-                    {script.length}/2000 caracteres
+                    {countWords(script)} palabras | {script.length}/2000 caracteres
+                    {script.trim() && (
+                      <div className="mt-1">~{calculateDuration(script, 1.0)} segundos</div>
+                    )}
                   </div>
                 </div>
 
                 <div className="flex justify-between items-center mt-8">
                   <div className="text-sm text-muted-foreground">
-                    💡 Tip: Sé específico sobre tu audiencia y objetivo
+                    💡 Tip: Necesitas al menos 5 palabras para continuar
                   </div>
                   <Button
                     onClick={() => setCurrentStep(2)}
-                    disabled={!script.trim() || script.length < 10}
+                    disabled={!script.trim() || countWords(script) < 5}
                     className="btn-primary px-8"
                   >
                     Continuar
@@ -459,7 +469,7 @@ export default function CreatePage() {
                               <div className="pt-3 border-t border-primary/10 space-y-2">
                                 <div className="flex items-center gap-2 text-xs text-green-600">
                                   <CheckCircle className="w-3 h-3" />
-                                  <span>Duración estimada: {scriptMetadata.duracion_estimada}s</span>
+                                  <span>Duración estimada: {scriptMetadata.duracion_estimada || calculateDuration(enhancedScript, 1.0)}s</span>
                                 </div>
                                 {scriptMetadata.mejoras_aplicadas && (
                                   <div className="text-xs text-muted-foreground">
@@ -500,23 +510,36 @@ export default function CreatePage() {
                   </Button>
 
                   {!enhancedScript ? (
-                    <Button
-                      onClick={handleEnhanceScript}
-                      disabled={isEnhancing || !script.trim()}
-                      className="btn-primary px-8"
-                    >
-                      {isEnhancing ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                          Mejorando...
-                        </>
-                      ) : (
-                        <>
-                          <Wand2 className="w-4 h-4 mr-2" />
-                          Mejorar con IA
-                        </>
-                      )}
-                    </Button>
+                    <div className="flex gap-3">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setEnhancedScript(script) // Usar script original
+                          setCurrentStep(3)
+                        }}
+                        disabled={!script.trim() || countWords(script) < 5}
+                      >
+                        Saltar IA
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </Button>
+                      <Button
+                        onClick={handleEnhanceScript}
+                        disabled={isEnhancing || !script.trim() || countWords(script) < 5}
+                        className="btn-primary px-8"
+                      >
+                        {isEnhancing ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                            Mejorando...
+                          </>
+                        ) : (
+                          <>
+                            <Wand2 className="w-4 h-4 mr-2" />
+                            Mejorar con IA
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   ) : (
                     <div className="flex gap-3">
                       <Button
@@ -743,6 +766,34 @@ export default function CreatePage() {
                   ))}
                 </div>
 
+                {/* Selector de velocidad */}
+                <div className="mt-8 max-w-md mx-auto">
+                  <label className="block text-sm font-medium mb-3 text-center">Velocidad del audio</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {SPEED_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => {
+                          setSelectedSpeed(option.value)
+                          // Actualizar velocidad del audio en reproducción si existe
+                          if (audioRef.current && !audioRef.current.paused) {
+                            audioRef.current.playbackRate = option.value
+                          }
+                        }}
+                        className={`
+                          p-3 rounded-xl border-2 text-sm font-medium transition-all
+                          ${selectedSpeed === option.value
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-border hover:border-primary/50 hover:bg-primary/5'
+                          }
+                        `}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="flex justify-between items-center mt-8">
                   <Button
                     variant="outline"
@@ -782,7 +833,7 @@ export default function CreatePage() {
                 {/* Summary */}
                 <div className="bg-gradient-to-br from-primary/5 to-secondary/5 border border-primary/20 rounded-2xl p-6 mb-8">
                   <h3 className="font-semibold mb-4 text-center">Resumen de tu Video</h3>
-                  <div className="grid md:grid-cols-4 gap-4 text-sm">
+                  <div className="grid md:grid-cols-5 gap-4 text-sm">
                     <div className="text-center">
                       <div className="font-medium text-primary">Categoría</div>
                       <div>{CATEGORIAS.find(c => c.id === selectedCategoria)?.name}</div>
@@ -796,8 +847,12 @@ export default function CreatePage() {
                       <div>{VOICES.find(v => v.id === selectedVoice)?.name}</div>
                     </div>
                     <div className="text-center">
+                      <div className="font-medium text-primary">Velocidad</div>
+                      <div>{SPEED_OPTIONS.find(s => s.value === selectedSpeed)?.label}</div>
+                    </div>
+                    <div className="text-center">
                       <div className="font-medium text-primary">Duración Est.</div>
-                      <div>{scriptMetadata?.duracion_estimada || '~45'} segundos</div>
+                      <div>{scriptMetadata?.duracion_estimada || calculateDuration(enhancedScript || script, selectedSpeed)} segundos</div>
                     </div>
                   </div>
                 </div>
