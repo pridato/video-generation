@@ -1,19 +1,48 @@
-# Video Generation Backend API
+# 🚀 ShortsAI Backend - Video Generation API
 
-API FastAPI para mejorar scripts de videos usando OpenAI GPT-4o-mini, optimizada para YouTube Shorts.
+<div align="center">
 
-## 🚀 Características
+![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-green)
+![Python](https://img.shields.io/badge/Python-3.8+-blue)
+![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o--mini-orange)
+![License](https://img.shields.io/badge/License-MIT-yellow)
 
+**API FastAPI para mejorar scripts de videos usando OpenAI GPT-4o-mini, optimizada para YouTube Shorts**
+
+[📖 Documentación API](http://localhost:8000/docs) • [🔄 ReDoc](http://localhost:8000/redoc) • [🏠 Proyecto Principal](../README.md)
+
+</div>
+
+## 🚀 Características Principales
+
+### 🤖 **Inteligencia Artificial**
 - **Mejora automática de scripts** usando GPT-4o-mini
 - **Optimización para YouTube Shorts** (15-60 segundos)
-- **Segmentación inteligente**: Hook, Contenido, CTA
-- **Estimación de duración** precisa
-- **Palabras clave SEO** automáticas
-- **Múltiples categorías** de contenido
-- **Validación robusta** con Pydantic
-- **Manejo de errores** completo
+- **Segmentación inteligente**: Hook (5-8s) + Contenido (40-45s) + CTA (5-8s)
+- **Estimación de duración** precisa (2 palabras/segundo)
+- **Palabras clave SEO** automáticas por categoría
+
+### 📊 **10 Categorías Soportadas**
+- `tech` - Tecnología y programación
+- `marketing` - Marketing y ventas
+- `education` - Educación y tutoriales
+- `entertainment` - Entretenimiento
+- `lifestyle` - Estilo de vida
+- `business` - Negocios
+- `fitness` - Fitness y salud
+- `food` - Comida y cocina
+- `travel` - Viajes
+- `news` - Noticias
+
+### 🛡️ **Arquitectura Robusta**
+- **Validación robusta** con Pydantic v2
+- **Manejo de errores** completo y detallado
 - **CORS habilitado** para frontend
-- **Documentación automática** con Swagger
+- **Documentación automática** con Swagger UI + ReDoc
+- **Logging estructurado** para monitoreo
+- **Health checks** integrados
+- **Rate limiting** preparado
+- **Escalabilidad horizontal** lista
 
 ## 📋 Requisitos
 
@@ -120,19 +149,42 @@ Health check del servicio.
 - `travel` - Viajes
 - `news` - Noticias
 
-## 🔧 Ejemplos de Uso
+## 🔧 Ejemplos de Uso Avanzados
 
-### cURL
+### 📊 **Scripts por Categoría**
+
+#### Tecnología (tech)
 ```bash
-# Mejorar script de tecnología
 curl -X POST "http://localhost:8000/mejorar-script" \
   -H "Content-Type: application/json" \
   -d '{
-    "script": "Hoy aprenderemos Python",
+    "script": "Hoy aprenderemos React hooks y cómo useState puede cambiar tu forma de programar",
     "categoria": "tech"
   }'
+```
 
-# Health check
+#### Marketing (marketing)
+```bash
+curl -X POST "http://localhost:8000/mejorar-script" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "script": "Te enseño 3 estrategias de marketing digital que aumentaron mis ventas 300%",
+    "categoria": "marketing"
+  }'
+```
+
+#### Educación (education)
+```bash
+curl -X POST "http://localhost:8000/mejorar-script" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "script": "La fórmula matemática que todo estudiante debe conocer para resolver ecuaciones rápidamente",
+    "categoria": "education"
+  }'
+```
+
+### 🔍 **Health Check**
+```bash
 curl "http://localhost:8000/health"
 ```
 
@@ -242,36 +294,169 @@ DEBUG=False
 
 ## 🚀 Deployment
 
-### Docker (Próximamente)
+### 🐳 **Docker**
 ```dockerfile
+# Dockerfile
 FROM python:3.11-slim
+
+# Set working directory
 WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
 COPY . .
+
+# Expose port
+EXPOSE 8000
+
+# Run the application
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-### Railway/Heroku
-1. Conectar repositorio
-2. Configurar variables de entorno
-3. Deploy automático
+```bash
+# Build and run
+docker build -t shortsai-backend .
+docker run -p 8000:8000 --env-file .env shortsai-backend
+```
 
-## 📝 Logs
+### 🌐 **Railway**
+1. Conectar repositorio desde GitHub
+2. Configurar variables de entorno:
+   ```
+   OPENAI_API_KEY=sk-your-key-here
+   CORS_ORIGINS=https://your-frontend.vercel.app
+   ```
+3. Deploy automático con cada push
 
+### 🟣 **Heroku**
+```bash
+# Heroku CLI deployment
+heroku create shortsai-backend
+heroku config:set OPENAI_API_KEY=sk-your-key-here
+heroku config:set CORS_ORIGINS=https://your-frontend.vercel.app
+git push heroku main
+```
+
+### ☁️ **AWS/GCP**
+- **AWS Lambda** con Serverless Framework
+- **Google Cloud Run** para contenedores
+- **Azure Container Instances**
+
+## 📝 Logs & Monitoring
+
+### 📊 **Logging Estructurado**
 El sistema incluye logging detallado:
 ```
 2024-01-15 10:30:00 - app.main - INFO - Recibida solicitud para mejorar script de categoría: tech
 2024-01-15 10:30:02 - app.services.openai_service - INFO - Script mejorado exitosamente. Duración: 45s
+2024-01-15 10:30:02 - app.main - INFO - Respuesta enviada correctamente
+```
+
+### 📊 **Metrics & Monitoring**
+- **Health Endpoint:** `/health` para health checks
+- **Prometheus Metrics** (próximamente)
+- **Error Tracking** con Sentry (próximamente)
+- **Performance Monitoring** con DataDog (próximamente)
+
+### 🚨 **Alertas**
+- **Rate Limiting:** Máx 100 requests/min por IP
+- **OpenAI API Errors:** Retry automático con backoff
+- **Memory Usage:** Alertas por encima del 80%
+- **Response Time:** Alertas por encima de 5s
+
+## 🧪 Testing
+
+### 📝 **Unit Tests**
+```bash
+# Ejecutar todos los tests
+python -m pytest tests/ -v
+
+# Tests con coverage
+python -m pytest tests/ --cov=app --cov-report=html
+
+# Tests de integración
+python -m pytest tests/integration/ -v
+```
+
+### 🔍 **Ejemplo de Test**
+```python
+# tests/test_script_enhancement.py
+import pytest
+from fastapi.testclient import TestClient
+from app.main import app
+
+client = TestClient(app)
+
+def test_mejorar_script_tech():
+    response = client.post(
+        "/mejorar-script",
+        json={
+            "script": "Aprende Python en 5 minutos",
+            "categoria": "tech"
+        }
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "script_mejorado" in data
+    assert data["duracion_estimada"] >= 15
+    assert data["duracion_estimada"] <= 60
+```
+
+### 🔒 **Security Testing**
+```bash
+# SQL Injection tests
+python -m pytest tests/security/ -k sql_injection
+
+# Input validation tests
+python -m pytest tests/security/ -k input_validation
+
+# Rate limiting tests
+python -m pytest tests/security/ -k rate_limit
+```
+
+## 🔒 Seguridad
+
+### 🛡️ **Medidas de Seguridad**
+- **Input Validation:** Pydantic models con validación estricta
+- **CORS Policy:** Dominios específicos permitidos
+- **Rate Limiting:** Protección contra spam y ataques DDoS
+- **Error Handling:** No exposición de información sensible
+- **API Key Protection:** Variables de entorno seguras
+- **HTTPS Only:** Forzado en producción
+
+### 🔑 **Variables Sensibles**
+```bash
+# Nunca commitear estas variables
+OPENAI_API_KEY=sk-...
+DATABASE_URL=postgresql://...
+SECRET_KEY=your-secret-key
+
+# Usar .env o variables de entorno del sistema
+export OPENAI_API_KEY="sk-your-key-here"
 ```
 
 ## 🤝 Contribuir
 
-1. Fork el proyecto
-2. Crear rama para feature (`git checkout -b feature/nueva-funcionalidad`)
-3. Commit cambios (`git commit -m 'Agregar nueva funcionalidad'`)
-4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
-5. Abrir Pull Request
+1. **Fork** el proyecto
+2. **Crear rama** para feature (`git checkout -b feature/nueva-funcionalidad`)
+3. **Escribir tests** para la nueva funcionalidad
+4. **Commit** cambios (`git commit -m 'Agregar nueva funcionalidad'`)
+5. **Push** a la rama (`git push origin feature/nueva-funcionalidad`)
+6. **Abrir Pull Request** con descripción detallada
+
+### 📝 **Guías de Contribución**
+- **Código:** Seguir PEP 8 y usar Black para formateo
+- **Tests:** Mínimo 80% de coverage
+- **Documentación:** Actualizar README y docstrings
+- **Commits:** Mensajes descriptivos en español
 
 ## 📄 Licencia
 
