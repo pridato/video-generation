@@ -3,6 +3,7 @@ import logging
 from openai import OpenAI
 from app.config import settings
 from app.models import ScriptResponse, CategoriaEnum, TonoEnum, TipoSegmentoEnum, Segmento
+from app.services.embedding_service import embedding_service
 
 logger = logging.getLogger(__name__)
 
@@ -141,6 +142,27 @@ class OpenAIService:
             # Validar tono
             tono = TonoEnum(data.get("tono", "educativo"))
 
+            # Generar embedding del script mejorado
+            script_embedding = None
+            if embedding_service:
+                try:
+                    # Preparar texto enriquecido para embedding
+                    prepared_text = embedding_service.prepare_script_text(
+                        script=data["script_mejorado"],
+                        categoria=categoria.value,
+                        keywords=data.get("palabras_clave", [])
+                    )
+
+                    # Generar embedding usando all-mpnet-base-v2
+                    script_embedding = embedding_service.generate_script_embedding(prepared_text)
+                    logger.info(f"✅ Embedding generado exitosamente ({len(script_embedding)} dimensiones)")
+
+                except Exception as e:
+                    logger.warning(f"⚠️ No se pudo generar embedding: {e}")
+                    # Continuar sin embedding, no es crítico para la funcionalidad principal
+            else:
+                logger.warning("⚠️ Servicio de embeddings no disponible")
+
             # Crear respuesta validada
             response_data = ScriptResponse(
                 script_mejorado=data["script_mejorado"],
@@ -148,7 +170,8 @@ class OpenAIService:
                 segmentos=segmentos,
                 palabras_clave=data.get("palabras_clave", []),
                 tono=tono,
-                mejoras_aplicadas=data.get("mejoras_aplicadas", [])
+                mejoras_aplicadas=data.get("mejoras_aplicadas", []),
+                embedding=script_embedding
             )
 
             logger.info(

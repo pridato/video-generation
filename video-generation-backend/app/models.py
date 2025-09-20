@@ -60,6 +60,8 @@ class ScriptResponse(BaseModel):
     tono: TonoEnum = Field(..., description="Tono detectado/aplicado")
     mejoras_aplicadas: List[str] = Field(...,
                                          description="Lista de mejoras aplicadas")
+    embedding: Optional[List[float]] = Field(None,
+                                           description="Embedding del script (768 dimensiones, all-mpnet-base-v2)")
 
 
 class HealthResponse(BaseModel):
