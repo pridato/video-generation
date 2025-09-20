@@ -1,4 +1,4 @@
-# enhanced_pexels_downloader.py - Con OpenCV para metadatos inteligentes
+# enhanced_pexels_downloader.py - Crear metadatos de clips con OpenCV para metadatos inteligentes
 
 import requests
 import os
