@@ -188,8 +188,8 @@ class ClipSelectionService:
                 segment_candidates.append((segment, candidates))
 
             # 4. Seleccionar clips óptimos evitando repeticiones
-            selected_clips = self._select_optimal_clips(
-                segment_candidates, target_clips_count
+            selected_clips = self._select_optimal_clips_with_duration(
+                segment_candidates, target_clips_count, audio_duration
             )
 
             # 5. Verificar coherencia temporal
@@ -459,6 +459,110 @@ class ClipSelectionService:
             1 for tag in emotion_tags if tag.lower() in neutral_emotions)
 
         return (positive_count + neutral_count * 0.5) / len(emotion_tags)
+
+    def _select_optimal_clips_with_duration(
+        self,
+        segment_candidates: List[Tuple[Dict, List[Tuple[ClipMetadata, float]]]],
+        target_count: int,
+        audio_duration: float
+    ) -> List[SegmentClipMatch]:
+        """
+        Selecciona clips óptimos considerando duración total y evitando repeticiones
+        """
+        selected_clips = []
+        used_clip_ids: Set[str] = set()
+        used_source_videos: Set[str] = set()
+        total_duration = 0.0
+        target_duration = audio_duration * 0.9  # Apuntar a 90% de la duración del audio
+
+        # Crear una lista de todos los candidatos con puntuaciones
+        all_candidates = []
+        for segment, candidates in segment_candidates:
+            for clip, similarity in candidates:
+                if clip.id not in used_clip_ids:
+                    segment_score = self._calculate_segment_score(clip, segment["type"], segment)
+                    final_score = similarity * 0.6 + segment_score * 0.4
+                    all_candidates.append({
+                        'segment': segment,
+                        'clip': clip,
+                        'similarity': similarity,
+                        'segment_score': segment_score,
+                        'final_score': final_score
+                    })
+
+        # Ordenar por puntuación
+        all_candidates.sort(key=lambda x: x['final_score'], reverse=True)
+
+        # Seleccionar clips hasta alcanzar la duración objetivo o el número máximo
+        for candidate in all_candidates:
+            if len(selected_clips) >= target_count:
+                break
+
+            clip = candidate['clip']
+            segment = candidate['segment']
+
+            # Evitar repeticiones de clip
+            if clip.id in used_clip_ids:
+                continue
+
+            # Evitar repeticiones de video fuente (Pexels ID)
+            source_id = str(clip.basic_info.get("id", ""))
+            if source_id and source_id in used_source_videos:
+                continue
+
+            # Si ya hemos cubierto suficiente duración, solo añadir clips muy buenos
+            if total_duration >= target_duration and candidate['final_score'] < 0.7:
+                continue
+
+            duration_compat = self._calculate_duration_match(clip, segment)
+
+            match = SegmentClipMatch(
+                segment_text=segment["text"],
+                segment_type=segment["type"],
+                clip=clip,
+                similarity_score=candidate['similarity'],
+                segment_score=candidate['segment_score'],
+                final_score=candidate['final_score'],
+                duration_compatibility=duration_compat
+            )
+
+            selected_clips.append(match)
+            used_clip_ids.add(clip.id)
+            total_duration += clip.duration
+
+            if source_id:
+                used_source_videos.add(source_id)
+
+        # Si aún no tenemos suficiente duración, añadir más clips de menor calidad
+        if total_duration < target_duration * 0.7 and len(selected_clips) < target_count:
+            for candidate in all_candidates:
+                if len(selected_clips) >= target_count:
+                    break
+
+                clip = candidate['clip']
+                segment = candidate['segment']
+
+                if clip.id in used_clip_ids:
+                    continue
+
+                duration_compat = self._calculate_duration_match(clip, segment)
+
+                match = SegmentClipMatch(
+                    segment_text=segment["text"],
+                    segment_type=segment["type"],
+                    clip=clip,
+                    similarity_score=candidate['similarity'],
+                    segment_score=candidate['segment_score'],
+                    final_score=candidate['final_score'],
+                    duration_compatibility=duration_compat
+                )
+
+                selected_clips.append(match)
+                used_clip_ids.add(clip.id)
+                total_duration += clip.duration
+
+        logger.info(f"📊 Seleccionados {len(selected_clips)} clips con duración total: {total_duration:.1f}s (objetivo: {audio_duration:.1f}s)")
+        return selected_clips
 
     def _select_optimal_clips(
         self,

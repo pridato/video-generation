@@ -146,19 +146,35 @@ export default function CreateVideoPage() {
         engagement: scriptMetadata.clips_data.estimated_engagement
       })
 
-      // Aquí irá la lógica de ensamblaje final del video
-      // Por ahora, simulamos el proceso
-      await new Promise(resolve => setTimeout(resolve, 3000))
+      // Llamar al endpoint de generación de video
+      const response = await fetch('http://localhost:8000/generar-video', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          script_metadata: scriptMetadata,
+          user_id: user.id,
+          title: `Video sobre ${selectedCategoria} - ${new Date().toLocaleDateString()}`
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Error al ensamblar el video')
+      }
+
+      const videoData = await response.json()
+
+      console.log('✅ Video ensamblado exitosamente:', videoData)
 
       success(
         '¡Video creado exitosamente!',
-        `Con ${scriptMetadata.clips_data.selected_clips.length} clips y ${(scriptMetadata.clips_data.estimated_engagement * 100).toFixed(0)}% de engagement estimado`
+        `Video de ${videoData.duration.toFixed(1)}s con ${videoData.metadata.clips_count} clips`
       )
 
-      // Redirect to library after a short delay
-      setTimeout(() => {
-        router.push('/library')
-      }, 2000)
+      // Redirigir a la página de preview con los datos del video
+      const videoDataParam = encodeURIComponent(JSON.stringify(videoData))
+      router.push(`/video-preview?videoData=${videoDataParam}`)
 
     } catch (err) {
       console.error('Error creating video:', err)

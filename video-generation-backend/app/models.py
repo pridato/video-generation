@@ -184,7 +184,7 @@ class ClipSelectionRequest(BaseModel):
     enhanced_script: dict = Field(..., description="Script mejorado con segmentos")
     categoria: CategoriaEnum = Field(..., description="Categoría del contenido")
     audio_duration: float = Field(..., ge=0, description="Duración real del audio en segundos")
-    target_clips_count: Optional[int] = Field(3, ge=1, le=10, description="Número objetivo de clips")
+    target_clips_count: Optional[int] = Field(3, ge=1, le=20, description="Número objetivo de clips")
 
 
 class SelectedClipInfo(BaseModel):

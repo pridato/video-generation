@@ -161,6 +161,13 @@ export default function VideoSummaryStep({
     setIsSelectingClips(true)
 
     try {
+      // Calcular clips necesarios basándose en la duración del audio
+      // Asumiendo clips promedio de 4-6 segundos, necesitamos más clips para audios largos
+      const averageClipDuration = 5 // segundos promedio por clip
+      const calculatedClipsCount = Math.max(3, Math.min(20, Math.ceil(audioDuration / averageClipDuration)))
+
+      console.log(`🎯 Calculando clips necesarios: ${audioDuration}s de audio necesita ~${calculatedClipsCount} clips`)
+
       const response = await fetch('http://localhost:8000/seleccionar-clips', {
         method: 'POST',
         headers: {
@@ -170,7 +177,7 @@ export default function VideoSummaryStep({
           enhanced_script: currentMetadata,
           categoria: selectedCategoria,
           audio_duration: audioDuration,
-          target_clips_count: 3
+          target_clips_count: calculatedClipsCount
         })
       })
 

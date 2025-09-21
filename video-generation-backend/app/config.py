@@ -35,7 +35,7 @@ class Settings:
     # Clip Selection Configuration
     DEFAULT_SIMILARITY_THRESHOLD: float = 0.3
     DEFAULT_QUALITY_THRESHOLD: float = 3.0
-    MAX_CLIPS_PER_SELECTION: int = 10
+    MAX_CLIPS_PER_SELECTION: int = 20
     CLIP_CACHE_TTL_SECONDS: int = 3600  # 1 hora
 
     @property

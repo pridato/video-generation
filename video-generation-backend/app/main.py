@@ -157,9 +157,6 @@ async def generar_voz(request: AudioGenerationRequest):
 
         # --- 3. Guardar en backend ---
         file_name = f"{request.video_id}.mp3"
-        file_path = os.path.join(AUDIO_DIR, file_name)
-        with open(file_path, "wb") as f:
-            f.write(audio_bytes)
 
         # --- 4. Respuesta JSON ---
         audio_segment = AudioSegment.from_file(
@@ -467,6 +464,96 @@ async def root():
         "docs": "/docs",
         "health": "/health"
     }
+
+
+@app.post("/generar-video", response_model=dict, tags=["Video Generation"])
+async def generar_video_final(request: dict):
+    """
+    🎬 Ensambla el video final combinando audio, clips y subtítulos
+
+    ## Proceso:
+    1. Descarga clips seleccionados
+    2. Sincroniza clips con duración del audio
+    3. Genera subtítulos automáticos
+    4. Ensambla todo con FFmpeg
+    5. Sube resultado a Supabase Storage
+    6. Retorna URL del video generado
+
+    ## Parámetros:
+    - **script_metadata**: Datos completos del script con audio y clips
+    - **user_id**: ID del usuario (opcional)
+    - **title**: Título del video (opcional)
+
+    Retorna URL del video generado y metadatos.
+    """
+    start_time = time.time()
+
+    try:
+        logger.info("🎬 Iniciando ensamblaje final del video...")
+
+        # Validar datos requeridos
+        script_metadata = request.get('script_metadata')
+        if not script_metadata:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="script_metadata es requerido"
+            )
+
+        audio_data = script_metadata.get('audio_data')
+        clips_data = script_metadata.get('clips_data')
+
+        if not audio_data or not clips_data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Faltan datos de audio o clips en script_metadata"
+            )
+
+        # Crear servicio de ensamblaje
+        from app.services.video_assembly_service import VideoAssemblyService
+        from supabase import create_client
+
+        supabase_client = create_client(
+            settings.SUPABASE_URL,
+            settings.SUPABASE_ANON_KEY
+        )
+
+        assembly_service = VideoAssemblyService(supabase_client)
+
+        # Ensamblar video
+        result = await assembly_service.assemble_video(
+            script_metadata=script_metadata,
+            user_id=request.get('user_id'),
+            title=request.get('title', 'Video Generado')
+        )
+
+        processing_time_ms = (time.time() - start_time) * 1000
+
+        logger.info(
+            f"✅ Video ensamblado exitosamente en {processing_time_ms:.1f}ms")
+        logger.info(f"📊 Video URL: {result['video_url']}")
+
+        return {
+            "success": True,
+            "video_id": result['video_id'],
+            "video_url": result['video_url'],
+            "thumbnail_url": result.get('thumbnail_url'),
+            "duration": result['duration'],
+            "file_size": result['file_size'],
+            "processing_time_ms": processing_time_ms,
+            "download_url": f"/download-video/{result['video_id']}",
+            "metadata": {
+                "clips_count": len(clips_data['selected_clips']),
+                "audio_duration": audio_data['duration'],
+                "title": request.get('title', 'Video Generado')
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"❌ Error ensamblando video: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error ensamblando video: {str(e)}"
+        )
 
 
 if __name__ == "__main__":
