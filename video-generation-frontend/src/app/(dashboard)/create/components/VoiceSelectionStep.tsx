@@ -131,7 +131,7 @@ export default function VoiceSelectionStep({
           {/* Speed Selection */}
           <div className="mb-8">
             <h3 className="font-semibold mb-4">Velocidad de Narración</h3>
-            <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {speedOptions.map((option) => (
                 <button
                   key={option.value}

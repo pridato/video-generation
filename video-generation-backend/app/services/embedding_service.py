@@ -28,7 +28,8 @@ class EmbeddingService:
             # Usar el mismo modelo que embeding_creator.py
             self.model = SentenceTransformer('all-mpnet-base-v2')
 
-            logger.info("✅ Modelo all-mpnet-base-v2 cargado - 768 dimensiones, 82% accuracy")
+            logger.info(
+                "✅ Modelo all-mpnet-base-v2 cargado - 768 dimensiones, 82% accuracy")
 
         except Exception as e:
             logger.error(f"❌ Error inicializando servicio de embeddings: {e}")
@@ -53,22 +54,25 @@ class EmbeddingService:
                 raise ValueError("El script no puede estar vacío")
 
             # Limpiar y normalizar texto (mismo proceso que embeding_creator.py)
-            cleaned_script = script.replace('\n', ' ').replace('\t', ' ').strip()
+            cleaned_script = script.replace(
+                '\n', ' ').replace('\t', ' ').strip()
 
             # Generar embedding normalizado (mismo proceso que embeding_creator.py)
-            embedding = self.model.encode(cleaned_script, normalize_embeddings=True)
+            embedding = self.model.encode(
+                cleaned_script, normalize_embeddings=True)
 
             # Convertir a lista Python para JSON (mismo que embeding_creator.py)
             embedding_list = embedding.tolist()
 
-            logger.info(f"✅ Embedding generado: {len(embedding_list)} dimensiones")
+            logger.info(
+                f"✅ Embedding generado: {len(embedding_list)} dimensiones")
             return embedding_list
 
         except Exception as e:
             logger.error(f"❌ Error generando embedding para script: {e}")
             raise ValueError(f"Error procesando embedding: {e}")
 
-    def prepare_script_text(self, script: str, categoria: str = None, keywords: List[str] = None) -> str:
+    def prepare_script_text(self, script: str, categoria: str = '', keywords: List[str] = []) -> str:
         """
         Prepara el texto del script para embedding, similar a prepare_clip_text en embeding_creator.py
 

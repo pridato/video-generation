@@ -174,3 +174,83 @@ class VoicePreviewResponse(BaseModel):
     filename: str = Field(..., description="Nombre del archivo de preview")
     duration: float = Field(..., ge=0,
                             description="Duración del preview en segundos")
+
+
+# =================================
+# MODELOS PARA SELECCIÓN DE CLIPS
+# =================================
+
+class ClipSelectionRequest(BaseModel):
+    enhanced_script: dict = Field(..., description="Script mejorado con segmentos")
+    categoria: CategoriaEnum = Field(..., description="Categoría del contenido")
+    audio_duration: float = Field(..., ge=0, description="Duración real del audio en segundos")
+    target_clips_count: Optional[int] = Field(3, ge=1, le=10, description="Número objetivo de clips")
+
+
+class SelectedClipInfo(BaseModel):
+    clip_id: str = Field(..., description="ID único del clip")
+    filename: str = Field(..., description="Nombre del archivo del clip")
+    file_url: str = Field(..., description="URL del archivo del clip")
+    duration: float = Field(..., description="Duración del clip en segundos")
+    segment_text: str = Field(..., description="Texto del segmento asociado")
+    segment_type: str = Field(..., description="Tipo de segmento (hook, contenido, cta)")
+    similarity_score: float = Field(..., ge=0, le=1, description="Puntuación de similitud semántica")
+    segment_score: float = Field(..., ge=0, le=1, description="Puntuación específica del segmento")
+    final_score: float = Field(..., ge=0, le=1, description="Puntuación final combinada")
+    duration_compatibility: float = Field(..., ge=0, le=1, description="Compatibilidad de duración")
+
+    # Metadatos adicionales del clip
+    quality_score: float = Field(..., description="Puntuación de calidad del clip")
+    motion_intensity: str = Field(..., description="Intensidad de movimiento del clip")
+    concept_tags: List[str] = Field(default=[], description="Etiquetas conceptuales del clip")
+    emotion_tags: List[str] = Field(default=[], description="Etiquetas emocionales del clip")
+    dominant_colors: List[str] = Field(default=[], description="Colores dominantes del clip")
+
+
+class ClipSelectionResponse(BaseModel):
+    success: bool = Field(..., description="Indica si la selección fue exitosa")
+    selected_clips: List[SelectedClipInfo] = Field(..., description="Lista de clips seleccionados")
+
+    # Métricas de la selección
+    total_clips_duration: float = Field(..., description="Duración total de los clips seleccionados")
+    audio_duration: float = Field(..., description="Duración del audio")
+    duration_compatibility: float = Field(..., ge=0, le=1, description="Compatibilidad temporal general")
+    visual_coherence_score: float = Field(..., ge=0, le=1, description="Puntuación de coherencia visual")
+    estimated_engagement: float = Field(..., ge=0, le=1, description="Engagement estimado")
+
+    # Información adicional
+    warnings: List[str] = Field(default=[], description="Advertencias sobre la selección")
+    processing_time_ms: float = Field(..., description="Tiempo de procesamiento en milisegundos")
+
+    # Estadísticas por categoría
+    clips_by_category: dict = Field(default={}, description="Distribución de clips por categoría")
+    average_similarity: float = Field(..., description="Similitud semántica promedio")
+    average_quality: float = Field(..., description="Calidad promedio de clips")
+
+
+class ClipSearchRequest(BaseModel):
+    query: str = Field(..., min_length=3, max_length=500, description="Texto de búsqueda")
+    categoria: CategoriaEnum = Field(..., description="Categoría para filtrar clips")
+    max_results: Optional[int] = Field(10, ge=1, le=50, description="Número máximo de resultados")
+    min_similarity: Optional[float] = Field(0.3, ge=0, le=1, description="Similitud mínima requerida")
+    min_quality: Optional[float] = Field(3.0, ge=0, le=5, description="Calidad mínima requerida")
+
+
+class ClipSearchResult(BaseModel):
+    clip_id: str = Field(..., description="ID único del clip")
+    filename: str = Field(..., description="Nombre del archivo")
+    file_url: str = Field(..., description="URL del archivo")
+    similarity_score: float = Field(..., description="Puntuación de similitud")
+    quality_score: float = Field(..., description="Puntuación de calidad")
+    duration: float = Field(..., description="Duración en segundos")
+    description: str = Field(..., description="Descripción del clip")
+    concept_tags: List[str] = Field(default=[], description="Etiquetas conceptuales")
+    keywords: List[str] = Field(default=[], description="Palabras clave")
+
+
+class ClipSearchResponse(BaseModel):
+    success: bool = Field(..., description="Indica si la búsqueda fue exitosa")
+    results: List[ClipSearchResult] = Field(..., description="Resultados de la búsqueda")
+    total_found: int = Field(..., description="Total de clips encontrados")
+    query_embedding_generated: bool = Field(..., description="Si se generó embedding para la consulta")
+    processing_time_ms: float = Field(..., description="Tiempo de procesamiento")

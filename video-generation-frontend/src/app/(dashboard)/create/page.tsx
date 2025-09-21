@@ -11,7 +11,7 @@ import ProgressSteps from './components/ProgressSteps'
 import ScriptInputStep from './components/ScriptInputStep'
 import ScriptEnhancementStep from './components/ScriptEnhancementStep'
 import VoiceSelectionStep from './components/VoiceSelectionStep'
-import VideoGenerationStep from './components/VideoGenerationStep'
+import VideoSummaryStep from './components/VideoSummaryStep'
 
 // Types and constants
 import { ScriptResponse } from './types'
@@ -35,8 +35,7 @@ export default function CreateVideoPage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [isGeneratingVoice, setIsGeneratingVoice] = useState(false)
 
-  const audioRef = useRef<HTMLAudioElement>(null)
-
+  const audioRef = useRef<HTMLAudioElement | null>(null)
   // Utility functions
   const countWords = (text: string) => {
     return text.trim().split(/\s+/).filter(word => word.length > 0).length
@@ -122,112 +121,39 @@ export default function CreateVideoPage() {
     }
   }
 
-  // Voice generation
-  const generateVoice = async (): Promise<boolean> => {
-    if (!scriptMetadata || !selectedVoice) {
-      error('Faltan datos del script o voz seleccionada')
-      return false
-    }
+  // Note: Voice generation is now handled in VoiceSelectionStep component
 
-    setIsGeneratingVoice(true)
-
-    try {
-      const enhancedScript = {
-        segmentos: (scriptMetadata.segmentos || []).map(seg => ({
-          texto: seg.texto,
-          tipo: seg.tipo,
-          emocion: "neutral",
-          duracion: seg.duracion,
-          velocidad: selectedSpeed,
-          pausa_despues: 0.5
-        }))
-      }
-
-      const response = await fetch('http://localhost:8000/generar-voz', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          script: scriptMetadata.script_mejorado || enhancedScript || script,
-          voice_id: selectedVoice,
-          video_id: `temp_${Date.now()}`,
-          enhanced_script: enhancedScript
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error('Error al generar la voz')
-      }
-
-      const audioData = await response.json()
-
-      // Actualizar scriptMetadata con los datos de audio - esta variable contiene TODO el video
-      const videoCompleto = {
-        ...(scriptMetadata || {}),
-        audio_data: {
-          audio_base64: audioData.audio_base64,
-          filename: audioData.filename,
-          duration: audioData.duration,
-          voice_id: audioData.voice_id,
-          segments: audioData.segments
-        },
-        template_id: selectedTemplate ?? undefined,
-        voice_id: selectedVoice,
-        speed: selectedSpeed,
-        categoria: selectedCategoria
-      }
-
-      setScriptMetadata(videoCompleto)
-
-      console.log('🎵 Audio generado exitosamente:', {
-        filename: audioData.filename,
-        duration: audioData.duration,
-        segments: audioData.segments.length
-      })
-      console.log('🎬 Datos completos del video:', videoCompleto)
-
-      return true
-
-    } catch (err) {
-      console.error('Error generando audio:', err)
-      error(
-        'Error al generar el audio',
-        err instanceof Error ? err.message : 'Inténtalo de nuevo más tarde'
-      )
-      return false
-    } finally {
-      setIsGeneratingVoice(false)
-    }
-  }
-
-  // Video generation
+  // Video generation (final step)
   const handleGenerate = async () => {
     if (!user) {
       error('Debes iniciar sesión para crear videos')
       return
     }
 
-    if (!script.trim() || !selectedVoice || !scriptMetadata) {
-      error('Por favor completa todos los campos requeridos')
+    if (!scriptMetadata?.audio_data || !scriptMetadata?.clips_data) {
+      error('Faltan datos de audio o clips. Por favor, regresa y completa el proceso.')
       return
     }
 
     setIsGenerating(true)
 
     try {
-      // Paso 1: Generar audio primero
-      console.log('🎵 Iniciando generación de audio...')
-      const audioGenerado = await generateVoice()
+      console.log('🎬 Iniciando creación final del video...')
+      console.log('📊 Datos del video completo:', {
+        script: scriptMetadata.script_mejorado.length,
+        audio_duration: scriptMetadata.audio_data.duration,
+        clips_count: scriptMetadata.clips_data.selected_clips.length,
+        engagement: scriptMetadata.clips_data.estimated_engagement
+      })
 
-      if (!audioGenerado) {
-        return
-      }
+      // Aquí irá la lógica de ensamblaje final del video
+      // Por ahora, simulamos el proceso
+      await new Promise(resolve => setTimeout(resolve, 3000))
 
-      console.log('✅ Audio generado exitosamente, procediendo con video...')
-
-      // guardamos el audio guardado en scriptmetaData
-      success('¡Video creado exitosamente!')
+      success(
+        '¡Video creado exitosamente!',
+        `Con ${scriptMetadata.clips_data.selected_clips.length} clips y ${(scriptMetadata.clips_data.estimated_engagement * 100).toFixed(0)}% de engagement estimado`
+      )
 
       // Redirect to library after a short delay
       setTimeout(() => {
@@ -261,9 +187,9 @@ export default function CreateVideoPage() {
     if (currentStep === 1 && script.trim()) {
       setCurrentStep(2)
     } else if (currentStep === 2 && enhancedScript && scriptMetadata) {
-      setCurrentStep(3) // Va directo a selección de voz
+      setCurrentStep(3) // Va a selección de voz
     } else if (currentStep === 3 && selectedVoice) {
-      setCurrentStep(4) // Va directo a generación
+      setCurrentStep(4) // Va al resumen donde se hace la carga automáticamente
     }
   }
 
@@ -330,19 +256,18 @@ export default function CreateVideoPage() {
           )}
 
           {currentStep === 4 && (
-            <VideoGenerationStep
+            <VideoSummaryStep
               scriptMetadata={scriptMetadata}
+              setScriptMetadata={setScriptMetadata}
               selectedTemplate={selectedTemplate}
               selectedVoice={selectedVoice}
               selectedSpeed={selectedSpeed}
               selectedCategoria={selectedCategoria}
-              enhancedScript={enhancedScript}
-              script={script}
               isGenerating={isGenerating}
-              isGeneratingVoice={isGeneratingVoice}
               onBack={handleBack}
               onGenerate={handleGenerate}
-              calculateDuration={calculateDuration}
+              onError={error}
+              onSuccess={success}
               templates={TEMPLATES}
               voices={VOICES}
               speedOptions={SPEED_OPTIONS}

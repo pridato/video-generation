@@ -20,9 +20,9 @@ interface ScriptInputStepProps {
 
 const PLACEHOLDERS = [
   "Explica cómo crear una API REST con Node.js en menos de 5 minutos...",
-  "Comparte 3 trucos de productividad que cambiarán tu día a día...",
-  "Desvela el secreto mejor guardado del marketing digital...",
-  "Enseña a tus seguidores cómo optimizar su código en Python..."
+  "Enseña 3 conceptos de matemáticas que todo estudiante debe saber...",
+  "Comparte 5 ejercicios efectivos para ganar masa muscular en casa...",
+  "Muestra cómo preparar un desayuno saludable en 10 minutos..."
 ]
 
 export default function ScriptInputStep({
@@ -134,8 +134,7 @@ export default function ScriptInputStep({
               disabled={!isValid}
               className="btn-primary px-12 py-3 text-lg"
             >
-              <Sparkles className="w-5 h-5 mr-2" />
-              Mejorar con IA
+              Continuar
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </div>

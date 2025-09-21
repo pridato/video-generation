@@ -4,8 +4,8 @@ import { Template, Voice, SpeedOption, Categoria, Step } from './types'
 export const STEPS: Step[] = [
   { id: 1, title: 'Script', icon: FileText },
   { id: 2, title: 'IA', icon: Wand2 },
-  { id: 3, title: 'Voz', icon: Mic },
-  { id: 4, title: 'Generar', icon: Clapperboard }
+  { id: 3, title: 'Voz + Clips', icon: Mic },
+  { id: 4, title: 'Resumen', icon: Clapperboard }
 ]
 
 export const TEMPLATES: Template[] = [
@@ -95,61 +95,35 @@ export const VOICES: Voice[] = [
 ]
 
 export const SPEED_OPTIONS: SpeedOption[] = [
-  { value: 0.75, label: '0.75x', description: 'Muy lento' },
+  { value: 0.75, label: '0.75x', description: 'Lento' },
   { value: 1.0, label: '1.0x', description: 'Normal' },
   { value: 1.25, label: '1.25x', description: 'Rápido' },
-  { value: 1.5, label: '1.5x', description: 'Muy rápido' },
-  { value: 1.75, label: '1.75x', description: 'Ultra rápido' },
-  { value: 2.0, label: '2.0x', description: 'Máximo' }
+  { value: 1.5, label: '1.5x', description: 'Muy rápido' }
 ]
 
 export const CATEGORIAS: Categoria[] = [
   {
     id: 'tech',
     name: 'Tecnología',
-    description: 'Programación, gadgets, software',
+    description: 'Programación, desarrollo, gadgets y software',
     icon: '💻'
-  },
-  {
-    id: 'business',
-    name: 'Negocios',
-    description: 'Emprendimiento, finanzas, productividad',
-    icon: '💼'
   },
   {
     id: 'education',
     name: 'Educación',
-    description: 'Tutoriales, explicaciones, cursos',
+    description: 'Tutoriales, explicaciones y cursos online',
     icon: '📚'
-  },
-  {
-    id: 'lifestyle',
-    name: 'Estilo de Vida',
-    description: 'Bienestar, salud, hobbies',
-    icon: '🌟'
-  },
-  {
-    id: 'entertainment',
-    name: 'Entretenimiento',
-    description: 'Diversión, curiosidades, viral',
-    icon: '🎬'
-  },
-  {
-    id: 'news',
-    name: 'Noticias',
-    description: 'Actualidad, análisis, tendencias',
-    icon: '📰'
-  },
-  {
-    id: 'food',
-    name: 'Comida',
-    description: 'Recetas, cocina, gastronomía',
-    icon: '🍳'
   },
   {
     id: 'fitness',
     name: 'Fitness',
-    description: 'Ejercicio, nutrición, deporte',
+    description: 'Ejercicio, nutrición y vida saludable',
     icon: '💪'
+  },
+  {
+    id: 'food',
+    name: 'Comida',
+    description: 'Recetas, cocina y gastronomía',
+    icon: '🍳'
   }
 ]
