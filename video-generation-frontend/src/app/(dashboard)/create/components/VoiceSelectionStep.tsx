@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect } from 'react'
+import {  useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, ArrowRight, Mic, Play, User, Zap } from 'lucide-react'
@@ -16,7 +16,7 @@ interface VoiceSelectionStepProps {
   onPlayPreview: (preview: string) => void;
   voices: Voice[];
   speedOptions: SpeedOption[];
-  audioRef: React.RefObject<HTMLAudioElement>;
+  audioRef: React.RefObject<HTMLAudioElement | null>;
 }
 
 export default function VoiceSelectionStep({

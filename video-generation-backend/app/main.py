@@ -17,6 +17,9 @@ import os
 import time
 from pydub import AudioSegment
 from app.models import AudioSegmentResponse
+# Crear servicio de ensamblaje
+from app.services.video_assembly_service import VideoAssemblyService
+from supabase import create_client
 
 
 # Configurar logging
@@ -507,10 +510,6 @@ async def generar_video_final(request: dict):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Faltan datos de audio o clips en script_metadata"
             )
-
-        # Crear servicio de ensamblaje
-        from app.services.video_assembly_service import VideoAssemblyService
-        from supabase import create_client
 
         supabase_client = create_client(
             settings.SUPABASE_URL,

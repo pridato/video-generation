@@ -33,7 +33,6 @@ export default function CreateVideoPage() {
   const [selectedSpeed, setSelectedSpeed] = useState(1.0)
   const [isEnhancing, setIsEnhancing] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
-  const [isGeneratingVoice, setIsGeneratingVoice] = useState(false)
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   // Utility functions

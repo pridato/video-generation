@@ -8,7 +8,7 @@ import { ScriptResponse } from '../types'
 interface ScriptEnhancementStepProps {
   script: string;
   enhancedScript: string;
-  scriptMetadata: ScriptResponse | null;
+  scriptMetadata: ScriptResponse  | null;
   isEnhancing: boolean;
   onEnhance: () => void;
   onRegenerate: () => void;

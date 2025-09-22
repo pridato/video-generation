@@ -24,9 +24,11 @@ import { ScriptResponse, Template, Voice, SpeedOption, Categoria, ClipSelectionR
   // Función para generar audio TTS
   import { useCallback } from 'react'
 
+import { Dispatch, SetStateAction } from 'react';
+
 interface VideoSummaryStepProps {
   scriptMetadata: ScriptResponse | null;
-  setScriptMetadata: (metadata: ScriptResponse) => void;
+  setScriptMetadata: Dispatch<SetStateAction<ScriptResponse | null>>;
   selectedTemplate: string | null;
   selectedVoice: string | null;
   selectedSpeed: number;
@@ -128,14 +130,6 @@ export default function VideoSummaryStep({
 
       setScriptMetadata(updatedMetadata)
 
-      console.log('🎵 Audio generado exitosamente:', {
-        filename: audioData.filename,
-        duration: audioData.duration,
-        segments: audioData.segments.length
-      })
-
-      console.log('📊 ScriptMetadata completo con audio:', updatedMetadata)
-
       return { success: true, duration: audioData.duration }
 
     } catch (err) {
@@ -188,7 +182,7 @@ export default function VideoSummaryStep({
       const clipsData: ClipSelectionResult = await response.json()
 
       // Actualizar scriptMetadata preservando TODOS los datos anteriores (especialmente audio_data)
-      setScriptMetadata(prevMetadata => {
+      setScriptMetadata((prevMetadata: ScriptResponse | null) => {
         if (!prevMetadata) return prevMetadata
 
         const updatedMetadata = {
@@ -251,7 +245,6 @@ export default function VideoSummaryStep({
 
       // Verificar si ya tiene audio y clips
       if (scriptMetadata.audio_data && scriptMetadata.clips_data) {
-        console.log('✅ Contenido ya completo, marcando como listo')
         setContentReady(true)
         return
       }
@@ -259,12 +252,10 @@ export default function VideoSummaryStep({
       // Solo procesar si no tiene audio aún
       if (!scriptMetadata.audio_data && !isGeneratingAudio && !isSelectingClips) {
         generationStartedRef.current = true // Marcar inmediatamente con ref
-        console.log('🎬 Iniciando generación automática de contenido...')
 
         const audioResult = await generateAudio()
 
         if (audioResult.success && audioResult.duration) {
-          console.log(`🎵 Audio listo, generando clips para ${audioResult.duration}s...`)
           const clipsSuccess = await selectClips(audioResult.duration)
 
           if (clipsSuccess) {
@@ -272,9 +263,7 @@ export default function VideoSummaryStep({
             console.log('✅ Todo el contenido generado exitosamente')
           }
         }
-      } else {
-        console.log('⚠️ Condiciones no cumplidas para generar contenido')
-      }
+      } 
     }
 
     // Solo ejecutar si tenemos scriptMetadata y no estamos en proceso
@@ -312,13 +301,6 @@ export default function VideoSummaryStep({
   // Determinar si el contenido está listo
   const contentComplete = scriptMetadata.audio_data && scriptMetadata.clips_data
 
-  // Debug: Log del estado del contenido
-  console.log('🔍 Estado de contenido:', {
-    hasAudio: !!scriptMetadata.audio_data,
-    hasClips: !!scriptMetadata.clips_data,
-    contentComplete,
-    isProcessing
-  })
 
   // Mostrar pantalla de carga mientras se procesa o no esté completo
   if (isProcessing || !contentComplete) {
