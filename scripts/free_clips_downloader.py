@@ -1,4 +1,4 @@
-# enhanced_pexels_downloader.py - Crear metadatos de clips con OpenCV para metadatos inteligentes
+# enhanced_pexels_downloader.py - Crear metadatos de clips con OpenCV + embeddings all-mpnet-base-v2
 
 import requests
 import os
@@ -8,13 +8,13 @@ import cv2
 import cv2.data
 import numpy as np
 from typing import Dict, List, Tuple
-from collections import Counter
+from sentence_transformers import SentenceTransformer
 
 # Configuración
 DOWNLOAD_FOLDER = "./clips"
 DELAY_BETWEEN_DOWNLOADS = 1.5
-TARGET_SIZE_TOTAL_MB = 500
-TARGET_SIZE_PER_CATEGORY_MB = 125
+TARGET_SIZE_TOTAL_MB = 1000
+TARGET_SIZE_PER_CATEGORY_MB = 250
 MIN_DURATION = 2  # Cambiado a 2s mínimo para Shorts
 MAX_DURATION = 8  # Cambiado a 8s máximo para Shorts
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
@@ -37,6 +37,15 @@ class YouTubeShortsMetadataExtractor:
             self.face_cascade = None
             self.eye_cascade = None
             self.smile_cascade = None
+
+        # Cargar modelo de embeddings
+        try:
+            print("🤖 Inicializando modelo de embeddings all-mpnet-base-v2...")
+            self.embedding_model = SentenceTransformer('all-mpnet-base-v2')
+            print("✅ Modelo de embeddings cargado - 768 dimensiones")
+        except Exception as e:
+            print(f"⚠️  Error cargando modelo de embeddings: {e}")
+            self.embedding_model = None
 
     def extract_youtube_shorts_metadata(self, video_path: str, pexels_metadata: Dict) -> Dict:
         """Extrae metadatos específicos para YouTube Shorts AI generation"""
@@ -81,6 +90,35 @@ class YouTubeShortsMetadataExtractor:
         # Calcular scores finales
         shorts_metadata["utility_scores"] = self._calculate_utility_scores(
             shorts_metadata)
+
+        # 🧠 GENERAR EMBEDDINGS
+        if self.embedding_model:
+            try:
+                # Preparar texto para embedding
+                embedding_text = self.prepare_video_text_for_embedding(
+                    pexels_metadata,
+                    shorts_metadata["visual_style"],
+                    shorts_metadata["ai_matching"]
+                )
+
+                # Generar embedding
+                embedding = self.generate_video_embedding(embedding_text)
+
+                if embedding:
+                    shorts_metadata["embedding"] = {
+                        "vector": embedding,
+                        "dimensions": len(embedding),
+                        "model": "all-mpnet-base-v2",
+                        "text_source": embedding_text[:200] + "..." if len(embedding_text) > 200 else embedding_text
+                    }
+                else:
+                    shorts_metadata["embedding"] = {}
+
+            except Exception as e:
+                print(f"    ⚠️  Error generando embedding: {e}")
+                shorts_metadata["embedding"] = {}
+        else:
+            shorts_metadata["embedding"] = {}
 
         return shorts_metadata
 
@@ -393,6 +431,80 @@ class YouTubeShortsMetadataExtractor:
 
         return scores
 
+    def prepare_video_text_for_embedding(self, pexels_metadata: Dict, visual_style: Dict, ai_matching: Dict) -> str:
+        """Prepara texto del video para generar embedding, siguiendo el patrón de embeding_creator.py"""
+        text_parts = []
+
+        # Información base de Pexels
+        if pexels_metadata.get('query'):
+            text_parts.append(str(pexels_metadata['query']))
+
+        if pexels_metadata.get('category'):
+            text_parts.append(f"category {pexels_metadata['category']}")
+
+        # Información de usuario/tags si está disponible
+        if pexels_metadata.get('user'):
+            text_parts.append(f"creator {pexels_metadata['user']}")
+
+        # Estilo visual
+        if visual_style.get('style_tags'):
+            text_parts.extend(
+                [f"style {tag}" for tag in visual_style['style_tags']])
+
+        if visual_style.get('color_temperature'):
+            text_parts.append(f"color {visual_style['color_temperature']}")
+
+        # Características de matching con IA
+        if ai_matching.get('dominant_subjects'):
+            text_parts.extend(
+                [f"subject {subject}" for subject in ai_matching['dominant_subjects']])
+
+        if ai_matching.get('emotional_tone'):
+            text_parts.append(f"emotion {ai_matching['emotional_tone']}")
+
+        # Nivel de acción/movimiento
+        action_level = ai_matching.get('action_level', 0)
+        if action_level > 7:
+            text_parts.append("dynamic high-energy")
+        elif action_level > 4:
+            text_parts.append("moderate motion")
+        else:
+            text_parts.append("static calm")
+
+        # Información técnica
+        text_parts.append(f"duration {pexels_metadata.get('duration', 0)}s")
+        text_parts.append(
+            f"resolution {pexels_metadata.get('resolution', '')}")
+
+        # Combinar todo
+        full_text = " ".join(text_parts).strip()
+
+        # Fallback si no hay texto
+        if not full_text:
+            full_text = f"video clip {pexels_metadata.get('category', 'general')}"
+
+        return full_text
+
+    def generate_video_embedding(self, text: str) -> List[float]:
+        """Genera embedding de 768 dimensiones siguiendo el patrón de embeding_creator.py"""
+        if not self.embedding_model:
+            return []
+
+        try:
+            # Limpiar y normalizar texto (mismo proceso que embeding_creator.py)
+            cleaned_text = text.replace('\n', ' ').replace('\t', ' ').strip()
+
+            # Generar embedding normalizado (mismo proceso que embeding_creator.py)
+            embedding = self.embedding_model.encode(
+                cleaned_text, normalize_embeddings=True)
+
+            # Convertir a lista Python para JSON (mismo que embeding_creator.py)
+            return embedding.tolist()
+
+        except Exception as e:
+            print(f"    ⚠️  Error generando embedding: {e}")
+            return []
+
 
 class EnhancedPexelsDownloader:
     """Descargador mejorado con análisis de OpenCV integrado desde el script original"""
@@ -405,13 +517,8 @@ class EnhancedPexelsDownloader:
         self.metadata_extractor = YouTubeShortsMetadataExtractor()
 
         # 4 categorías específicas requeridas
-        # self.categories = [
-        #     'tech', 'education', 'food', 'fitness'
-        # ]
-
-        # 4 categorías específicas requeridas
         self.categories = [
-            'tech'
+            'tech', 'education', 'food', 'fitness'
         ]
 
         # Crear carpetas por categoría e inicializar contadores
@@ -598,12 +705,23 @@ class EnhancedPexelsDownloader:
             # Mostrar scores de utilidad
             scores = enhanced_metadata.get("utility_scores", {})
             shorts_compat = enhanced_metadata.get("shorts_compatibility", {})
+            embedding_info = enhanced_metadata.get("embedding", {})
 
             print(f"    📊 Scores: Tech={scores.get('tech_tutorial', 0):.1f}/10, "
                   f"Motivación={scores.get('motivation', 0):.1f}/10, "
                   f"Calidad={scores.get('overall_quality', 0):.1f}/10")
             print(f"    📱 Shorts: Orientación={shorts_compat.get('orientation_score', 0):.1f}/10, "
                   f"Duración={shorts_compat.get('duration_score', 0):.1f}/10")
+
+            # Mostrar información de embeddings
+            if embedding_info and embedding_info.get("vector"):
+                print(f"    🧠 Embedding: {embedding_info.get('dimensions', 0)} dims, "
+                      f"modelo {embedding_info.get('model', 'unknown')}")
+                text_source = embedding_info.get('text_source', '')
+                if text_source:
+                    print(f"    📝 Texto base: {text_source[:100]}...")
+            else:
+                print(f"    ⚠️  Embedding: No generado")
 
             return file_size_mb
 
@@ -621,14 +739,16 @@ class EnhancedPexelsDownloader:
 def download_plan_enhanced():
     """Plan de descarga con análisis mejorado"""
 
-    print("🧠 DESCARGA MEJORADA CON OPENCV")
-    print("=" * 50)
+    print("🧠 DESCARGA MEJORADA CON OPENCV + EMBEDDINGS")
+    print("=" * 60)
     print("✨ Características:")
     print("   • Análisis de compatibilidad con YouTube Shorts")
     print("   • Detección de personas y emociones")
     print("   • Clasificación de estilo visual")
     print("   • Scores de utilidad para diferentes templates")
     print("   • Análisis de posicionamiento en video")
+    print("   • Generación de embeddings con all-mpnet-base-v2 (768 dims)")
+    print("   • Texto enriquecido para búsqueda semántica")
     print()
 
     downloader = EnhancedPexelsDownloader()
@@ -636,28 +756,61 @@ def download_plan_enhanced():
     # Queries optimizadas para YouTube Shorts
     download_queries = {
         'tech': [
-            'programming code screen', 'developer typing keyboard', 'software development',
-            'coding workspace setup', 'laptop multiple monitors', 'web development',
-            'mobile app development', 'data analysis dashboard', 'artificial intelligence',
-            'terminal command line', 'debugging code editor', 'git version control',
-            'database query visualization', 'cloud computing setup', 'cybersecurity monitoring',
-            'neural network training', 'server deployment', 'API testing tools',
-            'machine learning models', 'blockchain development', 'IoT device programming'
+            # 'programming code screen', 'developer typing keyboard', 'software development',
+            # 'coding workspace setup', 'laptop multiple monitors', 'web development',
+            # 'mobile app development', 'data analysis dashboard', 'artificial intelligence',
+            # 'terminal command line', 'debugging code editor', 'git version control',
+            # 'database query visualization', 'cloud computing setup', 'cybersecurity monitoring',
+            # 'neural network training', 'server deployment', 'API testing tools',
+            # 'machine learning models', 'blockchain development', 'IoT device programming',
+
+            # 'python code editor', 'javascript debugging', 'react development', 'docker containers',
+            # 'kubernetes deployment', 'microservices architecture', 'agile development', 'devops pipeline',
+            # 'code review process', 'unit testing framework', 'algorithm visualization', 'data structures',
+            # 'frontend backend integration', 'responsive design', 'performance optimization',
+            # 'security vulnerability scan', 'CI CD automation', 'version control workflow',
+            # 'tech conference presentation', 'hackathon coding', 'open source contribution',
+            # 'startup tech office', 'silicon valley workspace', 'remote developer setup'
         ],
         'education': [
             'student online learning', 'teacher explaining', 'book reading study',
             'e-learning computer', 'tutorial demonstration', 'knowledge sharing',
-            'academic research', 'university lecture hall', 'educational content'
+            'academic research', 'university lecture hall', 'educational content',
+            'study notes organized', 'exam preparation', 'library study session',
+            'online course platform', 'educational video recording', 'whiteboard explanation',
+            'student presentation', 'group study collaboration', 'research paper writing',
+            'academic conference', 'thesis defense', 'laboratory practical',
+            'educational app learning', 'skill development', 'certification course',
+            'language learning practice', 'STEM education', 'homework assistance',
+            'educational technology', 'classroom interaction', 'distance learning setup',
+            'academic achievement', 'graduation ceremony', 'scholarship success'
         ],
         'food': [
             'chef cooking kitchen', 'healthy meal preparation', 'food ingredients fresh',
             'cooking tutorial step', 'recipe demonstration', 'meal prep healthy',
-            'food styling photography', 'kitchen cooking tips', 'culinary arts'
+            'food styling photography', 'kitchen cooking tips', 'culinary arts',
+
+            'baking bread homemade', 'pasta making process', 'vegetarian recipes',
+            'street food preparation', 'gourmet plating presentation', 'spices herbs collection',
+            'kitchen utensils professional', 'food safety hygiene', 'restaurant kitchen',
+            'farmers market fresh', 'organic ingredients', 'food truck cooking',
+            'wine pairing selection', 'dessert decoration', 'knife skills demonstration',
+            'international cuisine', 'comfort food preparation', 'diet meal planning',
+            'cooking competition', 'food blogger setup', 'recipe card writing',
+            'seasonal ingredients', 'food preservation', 'kitchen organization'
         ],
         'fitness': [
             'gym workout exercise', 'running outdoor fitness', 'yoga practice meditation',
             'strength training gym', 'cardio exercise training', 'fitness motivation',
-            'sports training athlete', 'wellness lifestyle healthy', 'active workout'
+            'sports training athlete', 'wellness lifestyle healthy', 'active workout',
+            'home workout routine', 'crossfit training', 'pilates stretching',
+            'martial arts training', 'swimming pool exercise', 'cycling outdoor',
+            'weightlifting powerlifting', 'fitness tracking app', 'protein shake preparation',
+            'fitness coach training', 'body transformation', 'athletic performance',
+            'recovery stretching', 'functional training', 'HIIT workout intense',
+            'fitness equipment setup', 'outdoor adventure sport', 'team sports training',
+            'fitness progress tracking', 'nutrition meal prep', 'wellness journey',
+            'fitness community group', 'personal trainer session', 'fitness challenge'
         ]
     }
 
