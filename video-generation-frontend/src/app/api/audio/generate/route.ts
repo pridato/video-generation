@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`Enviando solicitud de audio al backend: ${BACKEND_URL}/generar-audio`)
+    console.log('🎵 Enhanced script con segmentos:', JSON.stringify(enhancedScript, null, 2))
 
     // Llamar al backend Python para generar el audio
     const backendResponse = await fetch(`${BACKEND_URL}/generar-audio`, {

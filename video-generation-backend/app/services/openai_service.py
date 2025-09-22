@@ -154,8 +154,10 @@ class OpenAIService:
                     )
 
                     # Generar embedding usando all-mpnet-base-v2
-                    script_embedding = embedding_service.generate_script_embedding(prepared_text)
-                    logger.info(f"✅ Embedding generado exitosamente ({len(script_embedding)} dimensiones)")
+                    script_embedding = embedding_service.generate_script_embedding(
+                        prepared_text)
+                    logger.info(
+                        f"✅ Embedding generado exitosamente ({len(script_embedding)} dimensiones)")
 
                 except Exception as e:
                     logger.warning(f"⚠️ No se pudo generar embedding: {e}")
@@ -194,7 +196,7 @@ class OpenAIService:
         La validación de voice_id la hace el frontend, aquí solo pasamos el valor a OpenAI.
         """
         response = self.client.audio.speech.create(
-            model="gpt-4o-mini-tts",
+            model="gpt-4o-mini-tts",  # Modelo correcto de TTS
             voice=voice_id,  # type: ignore
             input=script,
         )
