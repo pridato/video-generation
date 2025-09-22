@@ -207,9 +207,25 @@ class SelectedClipInfo(BaseModel):
     dominant_colors: List[str] = Field(default=[], description="Colores dominantes del clip")
 
 
+# Modelo para asignaciones temporales de clips (NUEVO)
+class TimelineClipAssignmentModel(BaseModel):
+    clip_id: str = Field(..., description="ID del clip asignado")
+    segment_type: str = Field(..., description="Tipo de segmento (hook, contenido, cta)")
+    start_time: float = Field(..., description="Tiempo de inicio en segundos")
+    end_time: float = Field(..., description="Tiempo de fin en segundos")
+    clip_role: str = Field(..., description="Rol del clip (main, transition, filler)")
+    similarity_score: float = Field(..., description="Puntuación de similitud")
+    segment_score: float = Field(..., description="Puntuación específica del segmento")
+    final_score: float = Field(..., description="Puntuación final combinada")
+
 class ClipSelectionResponse(BaseModel):
     success: bool = Field(..., description="Indica si la selección fue exitosa")
     selected_clips: List[SelectedClipInfo] = Field(..., description="Lista de clips seleccionados")
+
+    # NUEVO: Timeline temporal para ensamblaje
+    timeline_assignments: Optional[List[TimelineClipAssignmentModel]] = Field(
+        default=None, description="Asignaciones temporales precisas de clips"
+    )
 
     # Métricas de la selección
     total_clips_duration: float = Field(..., description="Duración total de los clips seleccionados")
@@ -217,6 +233,11 @@ class ClipSelectionResponse(BaseModel):
     duration_compatibility: float = Field(..., ge=0, le=1, description="Compatibilidad temporal general")
     visual_coherence_score: float = Field(..., ge=0, le=1, description="Puntuación de coherencia visual")
     estimated_engagement: float = Field(..., ge=0, le=1, description="Engagement estimado")
+
+    # NUEVO: Métrica de cobertura temporal
+    temporal_coverage: Optional[float] = Field(
+        default=None, ge=0, le=1, description="Porcentaje de cobertura temporal del audio"
+    )
 
     # Información adicional
     warnings: List[str] = Field(default=[], description="Advertencias sobre la selección")
