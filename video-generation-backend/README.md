@@ -1,4 +1,4 @@
-# 🚀 ShortsAI Backend - Video Generation API
+# 🚀 Video Generation Backend API
 
 <div align="center">
 
@@ -7,7 +7,7 @@
 ![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o--mini-orange)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
-**API FastAPI para mejorar scripts de videos usando OpenAI GPT-4o-mini, optimizada para YouTube Shorts**
+**API backend refactorizada siguiendo las mejores prácticas de FastAPI para la generación automática de contenido de video con IA**
 
 [📖 Documentación API](http://localhost:8000/docs) • [🔄 ReDoc](http://localhost:8000/redoc) • [🏠 Proyecto Principal](../README.md)
 
@@ -34,20 +34,63 @@
 - `travel` - Viajes
 - `news` - Noticias
 
-### 🛡️ **Arquitectura Robusta**
+### 🛡️ **Arquitectura Robusta - REFACTORIZADA**
+- **Estructura FastAPI Best Practices** ✨
+- **Separación de responsabilidades** (API, Core, Services, Schemas)
 - **Validación robusta** con Pydantic v2
-- **Manejo de errores** completo y detallado
-- **CORS habilitado** para frontend
-- **Documentación automática** con Swagger UI + ReDoc
+- **Versionado de API** (/api/v1/)
+- **Dependencias centralizadas** y reutilizables
+- **Schemas tipados** para request/response
+- **Utils y helpers** organizados
+- **Testing structure** preparada
 - **Logging estructurado** para monitoreo
 - **Health checks** integrados
-- **Rate limiting** preparado
-- **Escalabilidad horizontal** lista
+- **CORS habilitado** para frontend
+- **Documentación automática** con Swagger UI + ReDoc
+
+## 🏗️ **Nueva Estructura del Proyecto - REFACTORIZADA**
+
+```
+app/
+├── api/                    # API layer
+│   ├── deps.py            # Dependencias comunes
+│   └── v1/                # API v1
+│       ├── api.py         # Main router v1
+│       └── routes/        # Endpoints específicos
+│           ├── health.py  # Health checks
+│           ├── script.py  # Script enhancement
+│           ├── audio.py   # Audio generation
+│           ├── clips.py   # Clip management
+│           └── video.py   # Video generation
+├── core/                  # Core configuration
+│   └── config.py         # Settings y configuración
+├── schemas/               # Pydantic models
+│   ├── common.py         # Enums y tipos comunes
+│   ├── health.py         # Health schemas
+│   ├── script.py         # Script schemas
+│   ├── audio.py          # Audio schemas
+│   ├── clips.py          # Clips schemas
+│   └── video.py          # Video schemas
+├── services/              # Business logic
+│   ├── openai_service.py
+│   ├── clip_selection_service.py
+│   ├── embedding_service.py
+│   └── video_assembly_service.py
+├── utils/                 # Utilidades
+│   ├── logging.py        # Configuración de logs
+│   ├── validation.py     # Validaciones
+│   └── helpers.py        # Helpers generales
+├── tests/                 # Tests
+│   ├── conftest.py       # Configuración de tests
+│   └── test_*.py         # Test modules
+└── main.py               # FastAPI app entrypoint
+```
 
 ## 📋 Requisitos
 
 - Python 3.8+
 - OpenAI API Key
+- Supabase Database
 - FastAPI
 - Uvicorn
 
@@ -76,9 +119,31 @@ python -m app.main
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-## 📡 Endpoints
+## 📡 **Endpoints API v1 - NUEVA ESTRUCTURA**
 
-### `POST /mejorar-script`
+**Base URL**: `/api/v1`
+
+Todas las rutas ahora están versionadas y organizadas por funcionalidad:
+
+### **Health Check**
+- `GET /api/v1/health` - Estado del sistema
+
+### **Script Enhancement**
+- `POST /api/v1/mejorar-script` - Mejorar script con IA
+
+### **Audio Generation**
+- `POST /api/v1/generar-voz` - Generar audio desde texto
+
+### **Clip Management**
+- `POST /api/v1/seleccionar-clips` - Selección inteligente de clips
+- `POST /api/v1/buscar-clips` - Búsqueda de clips por texto
+
+### **Video Generation**
+- `POST /api/v1/generar-video` - Ensamblar video completo
+
+---
+
+### `POST /api/v1/mejorar-script`
 
 Mejora un script para YouTube Shorts.
 
