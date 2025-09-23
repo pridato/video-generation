@@ -295,14 +295,33 @@ async def seleccionar_clips(request: ClipSelectionRequest):
             if selected_clips_info else 0.0
         )
 
+        # NUEVO: Convertir timeline assignments al formato del modelo
+        timeline_assignments_models = []
+        if hasattr(result, 'timeline_assignments') and result.timeline_assignments:
+            from app.models import TimelineClipAssignmentModel
+            for assignment in result.timeline_assignments:
+                timeline_model = TimelineClipAssignmentModel(
+                    clip_id=assignment.clip.id,
+                    segment_type=assignment.segment.type,
+                    start_time=assignment.start_time,
+                    end_time=assignment.end_time,
+                    clip_role=assignment.clip_role,
+                    similarity_score=assignment.similarity_score,
+                    segment_score=assignment.segment_score,
+                    final_score=assignment.final_score
+                )
+                timeline_assignments_models.append(timeline_model)
+
         response = ClipSelectionResponse(
             success=True,
             selected_clips=selected_clips_info,
+            timeline_assignments=timeline_assignments_models if timeline_assignments_models else None,
             total_clips_duration=result.total_duration,
             audio_duration=result.audio_duration,
             duration_compatibility=result.duration_compatibility,
             visual_coherence_score=result.visual_coherence_score,
             estimated_engagement=result.estimated_engagement,
+            temporal_coverage=getattr(result, 'temporal_coverage', None),
             warnings=result.warnings,
             processing_time_ms=processing_time_ms,
             clips_by_category=clips_by_category,

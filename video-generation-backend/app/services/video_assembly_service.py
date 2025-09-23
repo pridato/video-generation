@@ -94,10 +94,19 @@ class VideoAssemblyService:
             )
 
             # 3. Calcular timing y secuencia de clips
-            clip_sequence = self._calculate_clip_timing(
-                clips_paths,
-                script_metadata['audio_data']['duration']
-            )
+            # NUEVO: Usar timeline assignments si están disponibles
+            if 'timeline_assignments' in script_metadata.get('clips_data', {}):
+                clip_sequence = self._calculate_temporal_sequence(
+                    clips_paths,
+                    script_metadata['clips_data']['timeline_assignments'],
+                    script_metadata['audio_data']['duration']
+                )
+            else:
+                # Fallback al método anterior
+                clip_sequence = self._calculate_clip_timing(
+                    clips_paths,
+                    script_metadata['audio_data']['duration']
+                )
 
             # 4. Ensamblar video con FFmpeg
             output_path = await self._assemble_with_ffmpeg(
@@ -415,6 +424,105 @@ class VideoAssemblyService:
         logger.info(f"🎬 Clips usados en trim: {len(sequence)} clips únicos")
         for i, seq_clip in enumerate(sequence):
             logger.info(f"  Clip {seq_clip.get('clip_index', i)}: {seq_clip['duration']}s")
+
+        return sequence
+
+    def _calculate_temporal_sequence(
+        self,
+        clips_paths: List[Dict],
+        timeline_assignments: List[Dict],
+        audio_duration: float
+    ) -> List[Dict]:
+        """
+        NUEVO: Calcula secuencia temporal usando timeline assignments precisos
+        """
+        logger.info(f"🕒 Calculando secuencia temporal con {len(timeline_assignments)} assignments")
+
+        sequence = []
+
+        # Crear mapa de clips por clip_id para encontrar rutas locales
+        clips_map = {}
+        for clip_path_info in clips_paths:
+            # Intentar matchear por filename o características
+            for assignment in timeline_assignments:
+                clip_filename = assignment.get('clip', {}).get('filename', '')
+                if clip_filename and clip_filename in clip_path_info.get('path', ''):
+                    clips_map[assignment['clip']['id']] = clip_path_info
+                    break
+
+        # Ordenar assignments por start_time
+        sorted_assignments = sorted(timeline_assignments, key=lambda x: x.get('start_time', 0))
+
+        current_time = 0.0
+
+        for assignment in sorted_assignments:
+            start_time = assignment.get('start_time', current_time)
+            end_time = assignment.get('end_time', start_time + 1.0)
+            clip_duration = end_time - start_time
+            clip_role = assignment.get('clip_role', 'main')
+
+            # Buscar el clip correspondiente
+            clip_id = assignment['clip']['id']
+            clip_path_info = clips_map.get(clip_id)
+
+            if not clip_path_info:
+                logger.warning(f"⚠️ No se encontró clip local para assignment {clip_id}")
+                # Usar primer clip disponible como fallback
+                clip_path_info = clips_paths[0] if clips_paths else None
+
+            if not clip_path_info:
+                continue
+
+            # Agregar gaps si es necesario
+            if start_time > current_time:
+                gap_duration = start_time - current_time
+                if gap_duration > 0.1:  # Solo para gaps significativos
+                    logger.info(f"⏸️ Gap detectado: {current_time:.1f}s-{start_time:.1f}s ({gap_duration:.1f}s)")
+                    # Llenar gap con el último clip disponible o clip anterior
+                    if sequence:
+                        last_clip = sequence[-1]
+                        sequence.append({
+                            'path': last_clip['path'],
+                            'start_time': current_time,
+                            'duration': gap_duration,
+                            'segment_type': 'filler',
+                            'clip_role': 'filler'
+                        })
+                    current_time = start_time
+
+            # Agregar clip principal
+            sequence.append({
+                'path': clip_path_info['path'],
+                'start_time': start_time,
+                'duration': clip_duration,
+                'segment_type': assignment['segment']['type'],
+                'clip_role': clip_role,
+                'original_duration': clip_path_info.get('duration', clip_duration)
+            })
+
+            current_time = end_time
+
+            logger.debug(f"   📍 {clip_role}: {start_time:.1f}s-{end_time:.1f}s ({clip_duration:.1f}s)")
+
+        # Llenar el tiempo restante si es necesario
+        if current_time < audio_duration:
+            remaining_time = audio_duration - current_time
+            logger.info(f"🔄 Llenando tiempo restante: {remaining_time:.1f}s")
+
+            if sequence and remaining_time > 0.1:
+                # Repetir último clip para llenar
+                last_clip = sequence[-1]
+                sequence.append({
+                    'path': last_clip['path'],
+                    'start_time': current_time,
+                    'duration': remaining_time,
+                    'segment_type': 'filler',
+                    'clip_role': 'filler',
+                    'original_duration': last_clip.get('original_duration', remaining_time)
+                })
+
+        total_duration = sum(clip['duration'] for clip in sequence)
+        logger.info(f"✅ Secuencia temporal: {len(sequence)} clips, {total_duration:.1f}s total")
 
         return sequence
 
@@ -867,17 +975,59 @@ class VideoAssemblyService:
             raise
 
     async def _create_concat_file(self, clip_sequence: List[Dict], concat_file: str):
-        """Crea archivo de concatenación para FFmpeg"""
-        with open(concat_file, 'w') as f:
-            for i, clip in enumerate(clip_sequence):
-                # FFmpeg concat format con path absoluto
-                abs_path = os.path.abspath(clip['path'])
-                f.write(f"file '{abs_path}'\n")
+        """Crea archivo de concatenación para FFmpeg con transiciones mejoradas"""
 
-                # Solo especificar duración si NO es el último clip
-                # El último clip debe usar su duración natural
-                if i < len(clip_sequence) - 1:
-                    f.write(f"duration {clip['duration']}\n")
+        # Verificar si hay clips de transición para usar crossfade
+        has_transitions = any(clip.get('clip_role') == 'transition' for clip in clip_sequence)
+
+        if has_transitions:
+            # Para clips con transiciones, crear archivo de concatenación avanzado
+            await self._create_advanced_concat_file(clip_sequence, concat_file)
+        else:
+            # Método simple para retrocompatibilidad
+            with open(concat_file, 'w') as f:
+                for clip in clip_sequence:
+                    # FFmpeg concat format
+                    f.write(f"file '{clip['path']}'\n")
+                    if clip['duration'] < clip.get('original_duration', clip['duration']):
+                        # Si necesitamos recortar el clip
+                        f.write(f"duration {clip['duration']}\n")
+
+    async def _create_advanced_concat_file(self, clip_sequence: List[Dict], concat_file: str):
+        """
+        Crea archivo de concatenación con transiciones suaves usando crossfade
+        """
+        logger.info("🎬 Creando secuencia con transiciones crossfade")
+
+        with open(concat_file, 'w') as f:
+            previous_clip = None
+
+            for i, clip in enumerate(clip_sequence):
+                clip_role = clip.get('clip_role', 'main')
+                abs_path = os.path.abspath(clip['path'])
+
+                if clip_role == 'transition' and previous_clip:
+                    # Para clips de transición, aplicar crossfade con el clip anterior
+                    logger.debug(f"   🔄 Transición crossfade: {previous_clip['segment_type']} → {clip['segment_type']}")
+
+                    # Clip anterior con fade out
+                    prev_abs_path = os.path.abspath(previous_clip['path'])
+                    f.write(f"file '{prev_abs_path}'\n")
+                    if previous_clip['duration'] < previous_clip.get('original_duration', previous_clip['duration']):
+                        f.write(f"duration {previous_clip['duration']}\n")
+
+                    # Clip de transición con crossfade
+                    f.write(f"file '{abs_path}'\n")
+                    if clip['duration'] < clip.get('original_duration', clip['duration']):
+                        f.write(f"duration {clip['duration']}\n")
+
+                else:
+                    # Clip normal
+                    f.write(f"file '{abs_path}'\n")
+                    if clip['duration'] < clip.get('original_duration', clip['duration']):
+                        f.write(f"duration {clip['duration']}\n")
+
+                previous_clip = clip if clip_role != 'transition' else previous_clip
 
                 # Log para debug
                 logger.info(f"Clip {i+1}: {abs_path} - Duración: {clip['duration']}s")
