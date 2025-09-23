@@ -148,7 +148,7 @@ class ClipSelectionService:
         enhanced_script: Dict,
         category: str,
         audio_duration: float,
-        target_clips_count: int = 3
+        target_clips_count: int = None
     ) -> ClipSelectionResult:
         """
         Selecciona clips optimizados para un script mejorado
@@ -162,8 +162,15 @@ class ClipSelectionService:
         Returns:
             ClipSelectionResult con clips seleccionados y métricas
         """
+        # Calcular número de clips basado en duración si no se especifica
+        if target_clips_count is None:
+            # Fórmula: 1 clip cada 4-6 segundos, mínimo 5, máximo 15
+            target_clips_count = max(5, min(15, int(audio_duration / 5)))
+
         logger.info(
             f"🎬 Iniciando selección de clips para categoría: {category}")
+        logger.info(
+            f"⏱️ Audio: {audio_duration}s → Objetivo: {target_clips_count} clips")
 
         try:
             # 1. Cargar clips disponibles de la categoría
