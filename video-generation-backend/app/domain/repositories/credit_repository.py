@@ -42,7 +42,8 @@ class CreditRepository(ABC):
         credits: int,
         price_eur: Decimal = Decimal('0'),
         stripe_payment_id: Optional[str] = None,
-        pack_id: Optional[str] = None
+        pack_id: Optional[str] = None,
+        description: str = "Compra de créditos"
     ) -> Dict[str, Any]:
         """
         Agrega créditos al usuario (compra).
@@ -88,7 +89,7 @@ class CreditRepository(ABC):
             transaction_type (Optional[str]): Filtrar por tipo de transacción (compra, consumo, reembolso).
 
         Returns:
-            List[CreditTransaction]: Lista de transacciones de créditos.
+            List[CreditTransaction]: Lista de transacciones de créditos del usuario indicado.
         """
         pass
 
