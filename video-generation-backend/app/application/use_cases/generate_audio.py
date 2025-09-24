@@ -4,7 +4,7 @@ Use case for generating audio from scripts
 import logging
 import uuid
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 from app.domain.repositories.script_repository import ScriptRepository
 from app.domain.repositories.user_repository import UserRepository
@@ -15,7 +15,9 @@ logger = logging.getLogger(__name__)
 
 
 class GenerateAudioUseCase:
-    """Caso de uso para generar audio a partir de scripts."""
+    """
+    Caso de uso para generar audio a partir de scripts.
+    """
 
     def __init__(
         self,
@@ -65,19 +67,22 @@ class GenerateAudioUseCase:
             raise ValueError("Script no encontrado")
 
         # Verificar permisos
-        if script.usuario_id != user_id:
-            raise PermissionError("No tienes permisos para generar audio de este script")
+        if script.user_id != user_id:
+            raise PermissionError(
+                "No tienes permisos para generar audio de este script")
 
         # Validar que el script tenga texto mejorado
-        text_to_convert = script.texto_mejorado or script.texto_original
+        text_to_convert = script.enhanced_text or script.original_text
         if not text_to_convert:
-            raise ValueError("El script no tiene contenido para convertir a audio")
+            raise ValueError(
+                "El script no tiene contenido para convertir a audio")
 
         # Validar parámetros
         self._validate_parameters(voice, speed)
 
         try:
-            logger.info(f"Generando audio para script: {script_id}, voz: {voice}")
+            logger.info(
+                f"Generando audio para script: {script_id}, voz: {voice}")
 
             # Generar audio
             audio_data = await self.audio_service.generate_speech(
@@ -87,7 +92,8 @@ class GenerateAudioUseCase:
             )
 
             # Calcular duración estimada (aproximada)
-            estimated_duration = self._estimate_audio_duration(text_to_convert, speed)
+            estimated_duration = self._estimate_audio_duration(
+                text_to_convert, speed)
 
             result = {
                 "script_id": script_id,
@@ -111,13 +117,15 @@ class GenerateAudioUseCase:
             else:
                 # Retornar audio como base64 si no se guarda
                 import base64
-                result["audio_base64"] = base64.b64encode(audio_data).decode('utf-8')
+                result["audio_base64"] = base64.b64encode(
+                    audio_data).decode('utf-8')
                 result["stored"] = False
 
             # Actualizar actividad del usuario
             await self.user_repository.update_last_activity(user_id, datetime.utcnow())
 
-            logger.info(f"Audio generado exitosamente para script: {script_id}")
+            logger.info(
+                f"Audio generado exitosamente para script: {script_id}")
             return result
 
         except Exception as e:
@@ -155,7 +163,8 @@ class GenerateAudioUseCase:
             raise ValueError("El texto no puede estar vacío")
 
         if len(text.strip()) > 3000:
-            raise ValueError("El texto es demasiado largo (máximo 3000 caracteres)")
+            raise ValueError(
+                "El texto es demasiado largo (máximo 3000 caracteres)")
 
         # Validar parámetros
         self._validate_parameters(voice, speed)
@@ -191,7 +200,8 @@ class GenerateAudioUseCase:
                 result["stored"] = True
             else:
                 import base64
-                result["audio_base64"] = base64.b64encode(audio_data).decode('utf-8')
+                result["audio_base64"] = base64.b64encode(
+                    audio_data).decode('utf-8')
                 result["stored"] = False
 
             # Actualizar actividad del usuario
@@ -228,7 +238,8 @@ class GenerateAudioUseCase:
             raise ValueError("Los datos de audio están vacíos")
 
         if len(audio_data) > 25 * 1024 * 1024:  # 25MB máximo
-            raise ValueError("El archivo de audio es demasiado grande (máximo 25MB)")
+            raise ValueError(
+                "El archivo de audio es demasiado grande (máximo 25MB)")
 
         try:
             logger.info(f"Transcribiendo audio para usuario: {user_id}")
@@ -314,7 +325,8 @@ class GenerateAudioUseCase:
 
                 # Verificar que el archivo pertenece al usuario
                 if not file_path.startswith(f"audio/{user_id}/"):
-                    raise PermissionError("No tienes permisos para eliminar este audio")
+                    raise PermissionError(
+                        "No tienes permisos para eliminar este audio")
 
                 success = await self.storage_service.delete_file(
                     bucket="generated-content",

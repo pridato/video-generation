@@ -3,15 +3,16 @@ OpenAI service implementation for script enhancement and audio generation
 """
 import json
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 
 from .client import OpenAIClient
-from app.domain.entities.script import Script, SegmentoScript, TipoSegmento, Tono, Categoria
-
+from app.domain.entities.script import Script, Tone, Category
+from app.application.interfaces.audio_service import AudioService
+from app.application.interfaces.ai_service import AIService
 logger = logging.getLogger(__name__)
 
 
-class OpenAIScriptService:
+class OpenAIScriptService(AIService):
     """Servicio para mejora de scripts usando OpenAI."""
 
     def __init__(self):
@@ -59,36 +60,36 @@ REGLAS ESTRICTAS:
     def _create_enhancement_prompt(self, script: Script) -> str:
         """Crea el prompt específico para mejorar el script."""
         categoria_tips = {
-            Categoria.TECH: "Enfócate en beneficios prácticos, usa términos técnicos accesibles, incluye datos específicos",
-            Categoria.EDUCATION: "Estructura clara paso a paso, ejemplos prácticos, lenguaje educativo pero entretenido",
-            Categoria.MARKETING: "CTAs persuasivos, beneficios claros, urgencia sutil, prueba social",
-            Categoria.LIFESTYLE: "Experiencias personales, emociones, aspiraciones, relatabilidad",
-            Categoria.ENTERTAINMENT: "Elementos sorpresa, humor, narrativa envolvente, momentos memorables"
+            Category.TECH: "Enfócate en beneficios prácticos, usa términos técnicos accesibles, incluye datos específicos",
+            Category.EDUCATION: "Estructura clara paso a paso, ejemplos prácticos, lenguaje educativo pero entretenido",
+            Category.MARKETING: "CTAs persuasivos, beneficios claros, urgencia sutil, prueba social",
+            Category.LIFESTYLE: "Experiencias personales, emociones, aspiraciones, relatabilidad",
+            Category.ENTERTAINMENT: "Elementos sorpresa, humor, narrativa envolvente, momentos memorables"
         }
 
         tono_instructions = {
-            Tono.VIRAL: "Usa lenguaje impactante, hooks provocativos, elementos sorpresa, frases memorables",
-            Tono.EDUCATIVO: "Estructura didáctica clara, explicaciones paso a paso, ejemplos concretos",
-            Tono.PROFESIONAL: "Lenguaje formal pero accesible, datos y estadísticas, credibilidad",
-            Tono.CASUAL: "Conversacional, cercano, como hablar con un amigo, natural y auténtico",
-            Tono.ENERGETICO: "Entusiasmo alto, exclamaciones, ritmo rápido, emoción contagiosa"
+            Tone.VIRAL: "Usa lenguaje impactante, hooks provocativos, elementos sorpresa, frases memorables",
+            Tone.EDUCATIVO: "Estructura didáctica clara, explicaciones paso a paso, ejemplos concretos",
+            Tone.PROFESIONAL: "Lenguaje formal pero accesible, datos y estadísticas, credibilidad",
+            Tone.CASUAL: "Conversacional, cercano, como hablar con un amigo, natural y auténtico",
+            Tone.ENERGETICO: "Entusiasmo alto, exclamaciones, ritmo rápido, emoción contagiosa"
         }
 
         return f"""
-SCRIPT A MEJORAR: "{script.texto_original}"
+SCRIPT A MEJORAR: "{script.original_text}"
 
 ESPECIFICACIONES:
-- Duración objetivo: {script.duracion_objetivo} segundos
-- Tono: {script.tono.value} - {tono_instructions.get(script.tono, '')}
-- Categoría: {script.categoria.value} - {categoria_tips.get(script.categoria, '')}
-- Audiencia: {script.audiencia_objetivo}
+- Duración objetivo: {script.target_duration} segundos
+- Tono: {script.tone.value} - {tono_instructions.get(script.tone, '')}
+- Categoría: {script.category.value} - {categoria_tips.get(script.category, '')}
+- Audiencia: {script.target_audience}
 
 MEJORA EL SCRIPT siguiendo estas pautas:
 1. Mantén el mensaje core pero hazlo más atractivo y viral
-2. Optimiza para la duración objetivo ({script.duracion_objetivo}s)
-3. Aplica el tono {script.tono.value} de manera consistente
-4. Adapta el lenguaje para {script.audiencia_objetivo}
-5. Incluye elementos específicos de {script.categoria.value}
+2. Optimiza para la duración objetivo ({script.target_duration}s)
+3. Aplica el tono {script.tone.value} de manera consistente
+4. Adapta el lenguaje para {script.target_audience}
+5. Incluye elementos específicos de {script.category.value}
 6. Estructura en Hook → Contenido → CTA
 7. Usa técnicas de retención de audiencia
 8. Optimiza para algoritmo de YouTube Shorts
@@ -108,7 +109,8 @@ RESPONDE ÚNICAMENTE CON EL JSON VÁLIDO."""
         try:
             messages = [
                 {"role": "system", "content": self._create_system_prompt()},
-                {"role": "user", "content": self._create_enhancement_prompt(script)}
+                {"role": "user",
+                    "content": self._create_enhancement_prompt(script)}
             ]
 
             response = await self.client.complete_chat(
@@ -123,7 +125,8 @@ RESPONDE ÚNICAMENTE CON EL JSON VÁLIDO."""
             # Validar estructura requerida
             self._validate_enhancement_response(enhanced_data)
 
-            logger.info(f"Script mejorado exitosamente. Duración: {enhanced_data.get('duracion_estimada')}s")
+            logger.info(
+                f"Script mejorado exitosamente. Duración: {enhanced_data.get('duracion_estimada')}s")
             return enhanced_data
 
         except Exception as e:
@@ -132,11 +135,13 @@ RESPONDE ÚNICAMENTE CON EL JSON VÁLIDO."""
 
     def _validate_enhancement_response(self, data: Dict[str, Any]) -> None:
         """Valida la estructura de la respuesta de mejora."""
-        required_fields = ['script_mejorado', 'duracion_estimada', 'segmentos', 'keywords', 'mejoras']
+        required_fields = ['script_mejorado',
+                           'duracion_estimada', 'segmentos', 'keywords', 'mejoras']
 
         for field in required_fields:
             if field not in data:
-                raise ValueError(f"Campo requerido '{field}' no encontrado en respuesta")
+                raise ValueError(
+                    f"Campo requerido '{field}' no encontrado en respuesta")
 
         # Validar segmentos
         if not isinstance(data['segmentos'], list) or len(data['segmentos']) == 0:
@@ -149,11 +154,13 @@ RESPONDE ÚNICAMENTE CON EL JSON VÁLIDO."""
             seg_fields = ['texto', 'duracion', 'tipo']
             for field in seg_fields:
                 if field not in segmento:
-                    raise ValueError(f"Campo '{field}' requerido en segmento {i}")
+                    raise ValueError(
+                        f"Campo '{field}' requerido en segmento {i}")
 
             # Validar tipo de segmento
             if segmento['tipo'] not in ['hook', 'contenido', 'cta']:
-                raise ValueError(f"Tipo de segmento inválido: {segmento['tipo']}")
+                raise ValueError(
+                    f"Tipo de segmento inválido: {segmento['tipo']}")
 
     async def generate_keywords(self, text: str, max_keywords: int = 10) -> List[str]:
         """Genera keywords SEO para un texto."""
@@ -202,14 +209,15 @@ Responde ÚNICAMENTE con un JSON array de strings: ["keyword1", "keyword2", ...]
             'muy', 'todo', 'esta', 'son', 'ser', 'estar', 'hacer', 'puede', 'video'
         }
 
-        filtered_words = [w for w in words if w not in stop_words and len(w) > 3]
+        filtered_words = [
+            w for w in words if w not in stop_words and len(w) > 3]
 
         # Contar frecuencias y tomar las más comunes
         word_counts = Counter(filtered_words)
         return [word for word, _ in word_counts.most_common(max_keywords)]
 
 
-class OpenAIAudioService:
+class OpenAIAudioService(AudioService):
     """Servicio para generación de audio usando OpenAI."""
 
     def __init__(self):
@@ -243,7 +251,8 @@ class OpenAIAudioService:
                 response_format="mp3"
             )
 
-            logger.info(f"Audio generado: {len(audio_data)} bytes, voz: {voice}")
+            logger.info(
+                f"Audio generado: {len(audio_data)} bytes, voz: {voice}")
             return audio_data
 
         except Exception as e:

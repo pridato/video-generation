@@ -2,7 +2,6 @@
 Dependency injection container
 """
 import logging
-from functools import lru_cache
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -38,7 +37,9 @@ class DependencyContainer:
         self._initialized = False
 
     def initialize(self) -> None:
-        """Inicializa todas las dependencias."""
+        """
+        Inicializa todas las dependencias.
+        """
         if self._initialized:
             return
 
@@ -57,7 +58,11 @@ class DependencyContainer:
         logger.info("Dependency container inicializado exitosamente")
 
     def _init_external_services(self) -> None:
-        """Inicializa servicios externos."""
+        """
+        Inicializa servicios externos como OpenAI y Supabase.
+
+        Usa servicios mock si no están configurados.
+        """
         # OpenAI services
         if settings.openai_configured:
             self._instances['openai_script_service'] = OpenAIScriptService()
@@ -70,53 +75,72 @@ class DependencyContainer:
         # Supabase client
         if settings.supabase_configured:
             self._instances['supabase_client'] = SupabaseClient()
-            self._instances['storage_service'] = SupabaseStorageService(self._instances['supabase_client'])
+            self._instances['storage_service'] = SupabaseStorageService(
+                self._instances['supabase_client'])
         else:
             logger.warning("Supabase no configurado - usando servicios mock")
             self._instances['supabase_client'] = MockSupabaseClient()
             self._instances['storage_service'] = MockStorageService()
 
     def _init_repositories(self) -> None:
-        """Inicializa repositorios."""
-        # Los repositorios necesitan una sesión de BD, que se inyecta por request
-        # Aquí solo definimos las factories
+        """
+        Inicializa repositorios.
+
+        Los repositorios necesitan una sesión de BD, que se inyecta por request, aquí solo definimos las factories
+        """
         self._repository_factories = {
             'script_repository': lambda session: SQLScriptRepository(session),
             'user_repository': lambda session: SQLUserRepository(session)
         }
 
     def _init_use_cases(self) -> None:
-        """Inicializa casos de uso."""
-        # Los casos de uso se crean por request porque dependen de repositorios
-        # que a su vez dependen de la sesión de BD
+        """
+        Inicializa casos de uso.
+
+        Los casos de uso se crean por request porque dependen de repositorios que a su vez dependen de la sesión de BD
+        """
         pass
 
     def get_openai_script_service(self) -> OpenAIScriptService:
-        """Obtiene el servicio de OpenAI para scripts."""
+        """
+        Obtiene el servicio de OpenAI para scripts.
+        """
         return self._instances['openai_script_service']
 
     def get_openai_audio_service(self) -> OpenAIAudioService:
-        """Obtiene el servicio de OpenAI para audio."""
+        """
+        Obtiene el servicio de OpenAI para audio.
+        """
         return self._instances['openai_audio_service']
 
     def get_supabase_client(self) -> SupabaseClient:
-        """Obtiene el cliente de Supabase."""
+        """
+        Obtiene el cliente de Supabase.
+        """
         return self._instances['supabase_client']
 
     def get_storage_service(self) -> StorageService:
-        """Obtiene el servicio de storage."""
+        """
+        Obtiene el servicio de storage.
+        """
         return self._instances['storage_service']
 
     def get_script_repository(self, session: Session) -> ScriptRepository:
-        """Obtiene el repositorio de scripts."""
+        """
+        Obtiene el repositorio de scripts.
+        """
         return self._repository_factories['script_repository'](session)
 
     def get_user_repository(self, session: Session) -> UserRepository:
-        """Obtiene el repositorio de usuarios."""
+        """
+        Obtiene el repositorio de usuarios.
+        """
         return self._repository_factories['user_repository'](session)
 
     def get_enhance_script_use_case(self, session: Session) -> EnhanceScriptUseCase:
-        """Obtiene el caso de uso para mejorar scripts."""
+        """
+        Obtiene el caso de uso para mejorar scripts.
+        """
         return EnhanceScriptUseCase(
             script_repository=self.get_script_repository(session),
             user_repository=self.get_user_repository(session),
@@ -124,7 +148,9 @@ class DependencyContainer:
         )
 
     def get_generate_audio_use_case(self, session: Session) -> GenerateAudioUseCase:
-        """Obtiene el caso de uso para generar audio."""
+        """
+        Obtiene el caso de uso para generar audio.
+        """
         return GenerateAudioUseCase(
             script_repository=self.get_script_repository(session),
             user_repository=self.get_user_repository(session),
@@ -133,7 +159,7 @@ class DependencyContainer:
         )
 
 
-# Mock services para desarrollo/testing
+# Mock services para desarrollo/testing. Sirven si OpenAI o Supabase no están configurados.
 class MockOpenAIScriptService:
     """Mock service para OpenAI scripts."""
 

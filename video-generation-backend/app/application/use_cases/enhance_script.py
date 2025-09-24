@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Dict, Any
 
-from app.domain.entities.script import Script, SegmentoScript, Tono, Categoria, TipoSegmento
+from app.domain.entities.script import Script, ScriptSegment, Tone, Category, SegmentType
 from app.domain.entities.user import Usuario
 from app.domain.repositories.script_repository import ScriptRepository
 from app.domain.repositories.user_repository import UserRepository
@@ -66,24 +66,25 @@ class EnhanceScriptUseCase:
             raise PermissionError("Usuario ha alcanzado su límite mensual")
 
         # Validar parámetros
-        self._validate_parameters(original_script, target_duration, tone, category)
+        self._validate_parameters(
+            original_script, target_duration, tone, category)
 
         try:
             # Crear entidad Script
             script_id = str(uuid.uuid4())
             script = Script(
                 id=script_id,
-                texto_original=original_script.strip(),
-                texto_mejorado=None,
-                duracion_objetivo=target_duration,
-                tono=Tono(tone),
-                audiencia_objetivo=target_audience,
-                categoria=Categoria(category),
-                segmentos=[],
-                palabras_clave=[],
-                mejoras_aplicadas=[],
+                original_text=original_script.strip(),
+                enhanced_text=None,
+                target_duration=target_duration,
+                tone=Tone(tone),
+                target_audience=target_audience,
+                category=Category(category),
+                segments=[],
+                keywords=[],
+                applied_improvements=[],
                 embedding=None,
-                usuario_id=user_id,
+                user_id=user_id,
                 created_at=datetime.utcnow()
             )
 
@@ -99,28 +100,30 @@ class EnhanceScriptUseCase:
             )
 
             # Procesar resultado de la mejora
-            script.texto_mejorado = enhancement_result.get('script_mejorado', '')
-            script.palabras_clave = enhancement_result.get('keywords', [])
-            script.mejoras_aplicadas = enhancement_result.get('mejoras', [])
+            script.enhanced_text = enhancement_result.get(
+                'script_mejorado', '')
+            script.keywords = enhancement_result.get('keywords', [])
+            script.applied_improvements = enhancement_result.get('mejoras', [])
 
             # Crear segmentos
             segmentos_data = enhancement_result.get('segmentos', [])
             for i, seg_data in enumerate(segmentos_data):
-                segmento = SegmentoScript(
-                    texto=seg_data.get('texto', ''),
-                    duracion=seg_data.get('duracion', 0),
-                    tipo=TipoSegmento(seg_data.get('tipo', 'contenido')),
-                    posicion=i
+                segmento = ScriptSegment(
+                    text=seg_data.get('texto', ''),
+                    duration=seg_data.get('duracion', 0),
+                    type=SegmentType(seg_data.get('tipo', 'contenido')),
+                    position=i
                 )
-                script.segmentos.append(segmento)
+                script.segments.append(segmento)
 
             # Si no hay segmentos, generarlos automáticamente
-            if not script.segmentos:
-                script.segmentos = ScriptDomainService.generar_segmentos_automaticos(script)
+            if not script.segments:
+                script.segments = ScriptDomainService.generar_segmentos_automaticos(
+                    script)
 
             # Generar embedding
             try:
-                script.embedding = await self.ai_service.generate_embedding(script.texto_mejorado)
+                script.embedding = await self.ai_service.generate_embedding(script.enhanced_text)
             except Exception as e:
                 logger.warning(f"No se pudo generar embedding: {str(e)}")
 
@@ -133,29 +136,30 @@ class EnhanceScriptUseCase:
             logger.info(f"Script mejorado exitosamente: {script_id}")
 
             # Generar métricas de calidad
-            quality_metrics = ScriptDomainService.validar_calidad_script(saved_script)
+            quality_metrics = ScriptDomainService.validar_calidad_script(
+                saved_script)
 
             return {
                 "script_id": saved_script.id,
-                "original_script": saved_script.texto_original,
-                "enhanced_script": saved_script.texto_mejorado,
-                "original_length": saved_script.longitud_original,
-                "enhanced_length": saved_script.longitud_mejorada,
-                "estimated_duration": saved_script.duracion_estimada,
-                "target_duration": saved_script.duracion_objetivo,
+                "original_script": saved_script.original_text,
+                "enhanced_script": saved_script.enhanced_text,
+                "original_length": saved_script.original_length,
+                "enhanced_length": saved_script.improved_length,
+                "estimated_duration": saved_script.estimated_duration,
+                "target_duration": saved_script.target_duration,
                 "segments": [
                     {
-                        "text": seg.texto,
-                        "duration": seg.duracion,
-                        "type": seg.tipo.value,
-                        "position": seg.posicion
+                        "text": seg.text,
+                        "duration": seg.duration,
+                        "type": seg.type.value,
+                        "position": seg.position
                     }
-                    for seg in saved_script.segmentos
+                    for seg in saved_script.segments
                 ],
-                "keywords": saved_script.palabras_clave,
-                "tone": saved_script.tono.value,
-                "category": saved_script.categoria.value,
-                "improvements": saved_script.mejoras_aplicadas,
+                "keywords": saved_script.keywords,
+                "tone": saved_script.tone.value,
+                "category": saved_script.category.value,
+                "improvements": saved_script.applied_improvements,
                 "quality_score": quality_metrics.get('score_calidad', 0),
                 "suggestions": ScriptDomainService.sugerir_mejoras(saved_script),
                 "created_at": saved_script.created_at.isoformat(),
@@ -187,16 +191,17 @@ class EnhanceScriptUseCase:
             raise ValueError("La duración debe estar entre 15 y 120 segundos")
 
         try:
-            Tono(tone)
+            Tone(tone)
         except ValueError:
-            valid_tones = [t.value for t in Tono]
+            valid_tones = [t.value for t in Tone]
             raise ValueError(f"Tono inválido. Opciones válidas: {valid_tones}")
 
         try:
-            Categoria(category)
+            Category(category)
         except ValueError:
-            valid_categories = [c.value for c in Categoria]
-            raise ValueError(f"Categoría inválida. Opciones válidas: {valid_categories}")
+            valid_categories = [c.value for c in Category]
+            raise ValueError(
+                f"Categoría inválida. Opciones válidas: {valid_categories}")
 
     async def get_user_scripts(
         self,
@@ -216,13 +221,13 @@ class EnhanceScriptUseCase:
             "scripts": [
                 {
                     "id": script.id,
-                    "original_script": script.texto_original,
-                    "enhanced_script": script.texto_mejorado,
-                    "duration": script.duracion_estimada,
-                    "target_duration": script.duracion_objetivo,
-                    "tone": script.tono.value,
-                    "category": script.categoria.value,
-                    "keywords": script.palabras_clave,
+                    "original_script": script.original_text,
+                    "enhanced_script": script.enhanced_text,
+                    "duration": script.estimated_duration,
+                    "target_duration": script.target_duration,
+                    "tone": script.tone.value,
+                    "category": script.category.value,
+                    "keywords": script.keywords,
                     "created_at": script.created_at.isoformat(),
                     "quality_score": ScriptDomainService.validar_calidad_script(script).get('score_calidad', 0)
                 }
@@ -238,33 +243,33 @@ class EnhanceScriptUseCase:
         if not script:
             raise ValueError("Script no encontrado")
 
-        if script.usuario_id != user_id:
+        if script.user_id != user_id:
             raise PermissionError("No tienes permisos para ver este script")
 
         quality_metrics = ScriptDomainService.validar_calidad_script(script)
 
         return {
             "script_id": script.id,
-            "original_script": script.texto_original,
-            "enhanced_script": script.texto_mejorado,
-            "original_length": script.longitud_original,
-            "enhanced_length": script.longitud_mejorada,
-            "estimated_duration": script.duracion_estimada,
-            "target_duration": script.duracion_objetivo,
+            "original_script": script.original_text,
+            "enhanced_script": script.enhanced_text,
+            "original_length": script.original_length,
+            "enhanced_length": script.improved_length,
+            "estimated_duration": script.estimated_duration,
+            "target_duration": script.target_duration,
             "segments": [
                 {
-                    "text": seg.texto,
-                    "duration": seg.duracion,
-                    "type": seg.tipo.value,
-                    "position": seg.posicion
+                    "text": seg.text,
+                    "duration": seg.duration,
+                    "type": seg.type.value,
+                    "position": seg.position
                 }
-                for seg in script.segmentos
+                for seg in script.segments
             ],
-            "keywords": script.palabras_clave,
-            "tone": script.tono.value,
-            "category": script.categoria.value,
-            "target_audience": script.audiencia_objetivo,
-            "improvements": script.mejoras_aplicadas,
+            "keywords": script.keywords,
+            "tone": script.tone.value,
+            "category": script.category.value,
+            "target_audience": script.target_audience,
+            "improvements": script.applied_improvements,
             "quality_metrics": quality_metrics,
             "suggestions": ScriptDomainService.sugerir_mejoras(script),
             "created_at": script.created_at.isoformat(),

@@ -5,7 +5,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 import re
 
-from ..entities.script import Script, SegmentoScript, TipoSegmento, Tono, Categoria
+from ..entities.script import Script, ScriptSegment, SegmentType, Tone, Category
 
 
 class ScriptDomainService:
@@ -21,12 +21,12 @@ class ScriptDomainService:
         return palabras / palabras_por_segundo
 
     @staticmethod
-    def generar_segmentos_automaticos(script: Script) -> List[SegmentoScript]:
+    def generar_segmentos_automaticos(script: Script) -> List[ScriptSegment]:
         """Genera segmentos automáticamente basado en el texto del script."""
-        if not script.texto_mejorado:
+        if not script.enhanced_text:
             return []
 
-        texto = script.texto_mejorado
+        texto = script.enhanced_text
         oraciones = re.split(r'[.!?]+', texto)
         oraciones = [o.strip() for o in oraciones if o.strip()]
 
@@ -39,35 +39,39 @@ class ScriptDomainService:
         # Hook: Primera parte (15-25%)
         hook_end = max(1, int(total_oraciones * 0.2))
         hook_texto = '. '.join(oraciones[:hook_end]) + '.'
-        hook_duracion = int(ScriptDomainService.calcular_duracion_estimada(hook_texto))
-        segmentos.append(SegmentoScript(
-            texto=hook_texto,
-            duracion=hook_duracion,
-            tipo=TipoSegmento.HOOK,
-            posicion=0
+        hook_duracion = int(
+            ScriptDomainService.calcular_duracion_estimada(hook_texto))
+        segmentos.append(ScriptSegment(
+            text=hook_texto,
+            duration=hook_duracion,
+            type=SegmentType.HOOK,
+            position=0
         ))
 
         # Contenido: Parte media (60-70%)
         contenido_start = hook_end
         contenido_end = max(hook_end + 1, int(total_oraciones * 0.85))
-        contenido_texto = '. '.join(oraciones[contenido_start:contenido_end]) + '.'
-        contenido_duracion = int(ScriptDomainService.calcular_duracion_estimada(contenido_texto))
-        segmentos.append(SegmentoScript(
-            texto=contenido_texto,
-            duracion=contenido_duracion,
-            tipo=TipoSegmento.CONTENIDO,
-            posicion=1
+        contenido_texto = '. '.join(
+            oraciones[contenido_start:contenido_end]) + '.'
+        contenido_duracion = int(
+            ScriptDomainService.calcular_duracion_estimada(contenido_texto))
+        segmentos.append(ScriptSegment(
+            text=contenido_texto,
+            duration=contenido_duracion,
+            type=SegmentType.CONTENIDO,
+            position=1
         ))
 
         # CTA: Última parte (10-25%)
         if contenido_end < total_oraciones:
             cta_texto = '. '.join(oraciones[contenido_end:]) + '.'
-            cta_duracion = int(ScriptDomainService.calcular_duracion_estimada(cta_texto))
-            segmentos.append(SegmentoScript(
-                texto=cta_texto,
-                duracion=cta_duracion,
-                tipo=TipoSegmento.CTA,
-                posicion=2
+            cta_duracion = int(
+                ScriptDomainService.calcular_duracion_estimada(cta_texto))
+            segmentos.append(ScriptSegment(
+                text=cta_texto,
+                duration=cta_duracion,
+                type=SegmentType.CTA,
+                position=2
             ))
 
         return segmentos
@@ -103,31 +107,32 @@ class ScriptDomainService:
             frecuencias[palabra] = frecuencias.get(palabra, 0) + 1
 
         # Ordenar por frecuencia y tomar las top N
-        keywords = sorted(frecuencias.items(), key=lambda x: x[1], reverse=True)
+        keywords = sorted(frecuencias.items(),
+                          key=lambda x: x[1], reverse=True)
         return [palabra for palabra, _ in keywords[:max_keywords]]
 
     @staticmethod
     def optimizar_para_duracion(script: Script, duracion_objetivo: int, tolerancia: int = 3) -> str:
         """Optimiza el script para cumplir con la duración objetivo."""
-        if not script.texto_mejorado:
-            return script.texto_original
+        if not script.enhanced_text:
+            return script.original_text
 
-        duracion_actual = script.duracion_estimada
+        duracion_actual = script.estimated_duration
         diferencia = abs(duracion_actual - duracion_objetivo)
 
         if diferencia <= tolerancia:
-            return script.texto_mejorado
+            return script.enhanced_text
 
         if duracion_actual > duracion_objetivo:
             # Reducir texto
             factor_reduccion = duracion_objetivo / duracion_actual
-            palabras = script.texto_mejorado.split()
+            palabras = script.enhanced_text.split()
             palabras_objetivo = int(len(palabras) * factor_reduccion)
             return ' '.join(palabras[:palabras_objetivo])
         else:
             # El texto es muy corto, se mantiene como está
             # La extensión debería manejarse en la capa de aplicación con IA
-            return script.texto_mejorado
+            return script.enhanced_text
 
     @staticmethod
     def validar_calidad_script(script: Script) -> Dict[str, Any]:
@@ -142,25 +147,28 @@ class ScriptDomainService:
             'score_calidad': 0.0
         }
 
-        if not script.texto_mejorado:
+        if not script.enhanced_text:
             return validaciones
 
         # Validar longitud
-        longitud = len(script.texto_mejorado)
+        longitud = len(script.enhanced_text)
         validaciones['longitud_adecuada'] = 50 <= longitud <= 2000
 
         # Validar duración
-        validaciones['duracion_objetivo'] = script.cumple_duracion_objetivo()
+        validaciones['duracion_objetivo'] = script.achieves_target_duration()
 
         # Validar segmentos
-        validaciones['tiene_segmentos'] = len(script.segmentos) > 0
-        validaciones['tiene_hook'] = any(s.tipo == TipoSegmento.HOOK for s in script.segmentos)
-        validaciones['tiene_cta'] = any(s.tipo == TipoSegmento.CTA for s in script.segmentos)
+        validaciones['tiene_segmentos'] = len(script.segments) > 0
+        validaciones['tiene_hook'] = any(
+            s.type == SegmentType.HOOK for s in script.segments)
+        validaciones['tiene_cta'] = any(
+            s.type == SegmentType.CTA for s in script.segments)
 
         # Calcular densidad de palabras clave
-        total_palabras = len(script.texto_mejorado.split())
+        total_palabras = len(script.enhanced_text.split())
         if total_palabras > 0:
-            validaciones['densidad_palabras_clave'] = len(script.palabras_clave) / total_palabras
+            validaciones['densidad_palabras_clave'] = len(
+                script.keywords) / total_palabras
 
         # Calcular score de calidad (0-100)
         score = 0
@@ -186,29 +194,37 @@ class ScriptDomainService:
         validacion = ScriptDomainService.validar_calidad_script(script)
 
         if not validacion['longitud_adecuada']:
-            if len(script.texto_mejorado) < 50:
-                mejoras.append("El script es muy corto. Considera añadir más detalles o contexto.")
+            if len(script.enhanced_text) < 50:
+                mejoras.append(
+                    "El script es muy corto. Considera añadir más detalles o contexto.")
             else:
-                mejoras.append("El script es muy largo. Considera resumir el contenido principal.")
+                mejoras.append(
+                    "El script es muy largo. Considera resumir el contenido principal.")
 
         if not validacion['duracion_objetivo']:
-            duracion = script.duracion_estimada
-            objetivo = script.duracion_objetivo
+            duracion = script.estimated_duration
+            objetivo = script.target_duration
             if duracion > objetivo:
-                mejoras.append(f"El script durará ~{duracion:.1f}s, excede el objetivo de {objetivo}s.")
+                mejoras.append(
+                    f"El script durará ~{duracion:.1f}s, excede el objetivo de {objetivo}s.")
             else:
-                mejoras.append(f"El script durará ~{duracion:.1f}s, es más corto que el objetivo de {objetivo}s.")
+                mejoras.append(
+                    f"El script durará ~{duracion:.1f}s, es más corto que el objetivo de {objetivo}s.")
 
         if not validacion['tiene_hook']:
-            mejoras.append("Considera añadir un hook más fuerte al inicio para captar la atención.")
+            mejoras.append(
+                "Considera añadir un hook más fuerte al inicio para captar la atención.")
 
         if not validacion['tiene_cta']:
-            mejoras.append("Añade un call-to-action claro al final del script.")
+            mejoras.append(
+                "Añade un call-to-action claro al final del script.")
 
-        if len(script.palabras_clave) < 3:
-            mejoras.append("Incluye más palabras clave relevantes para mejorar el SEO.")
+        if len(script.keywords) < 3:
+            mejoras.append(
+                "Incluye más palabras clave relevantes para mejorar el SEO.")
 
         if validacion['score_calidad'] < 60:
-            mejoras.append("El script necesita optimización general para mejorar su efectividad.")
+            mejoras.append(
+                "El script necesita optimización general para mejorar su efectividad.")
 
         return mejoras

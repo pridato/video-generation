@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc, and_, func
 
 from app.domain.repositories.script_repository import ScriptRepository
-from app.domain.entities.script import Script, SegmentoScript, Tono, Categoria, TipoSegmento
+from app.domain.entities.script import Script, ScriptSegment, Tone, Category, SegmentType
 from ..models import ScriptDB, SegmentoScriptDB, UsuarioDB
 
 
@@ -20,28 +20,28 @@ class SQLScriptRepository(ScriptRepository):
     def _to_entity(self, db_script: ScriptDB) -> Script:
         """Convierte un modelo de BD a entidad de dominio."""
         segmentos = [
-            SegmentoScript(
-                texto=seg.texto,
-                duracion=seg.duracion,
-                tipo=TipoSegmento(seg.tipo),
-                posicion=seg.posicion
+            ScriptSegment(
+                text=seg.texto,
+                duration=seg.duracion,
+                type=SegmentType(seg.tipo),
+                position=seg.posicion
             )
             for seg in db_script.segmentos
         ]
 
         return Script(
             id=db_script.id,
-            texto_original=db_script.texto_original,
-            texto_mejorado=db_script.texto_mejorado,
-            duracion_objetivo=db_script.duracion_objetivo,
-            tono=Tono(db_script.tono.value),
-            audiencia_objetivo=db_script.audiencia_objetivo,
-            categoria=Categoria(db_script.categoria.value),
-            segmentos=segmentos,
-            palabras_clave=db_script.palabras_clave or [],
-            mejoras_aplicadas=db_script.mejoras_aplicadas or [],
+            original_text=db_script.texto_original,
+            enhanced_text=db_script.texto_mejorado,
+            target_duration=db_script.duracion_objetivo,
+            tone=Tone(db_script.tono.value),
+            target_audience=db_script.audiencia_objetivo,
+            category=Category(db_script.categoria.value),
+            segments=segmentos,
+            keywords=db_script.palabras_clave or [],
+            applied_improvements=db_script.mejoras_aplicadas or [],
             embedding=db_script.embedding,
-            usuario_id=db_script.usuario_id,
+            user_id=db_script.usuario_id,
             created_at=db_script.created_at,
             updated_at=db_script.updated_at
         )
@@ -50,15 +50,15 @@ class SQLScriptRepository(ScriptRepository):
         """Convierte una entidad de dominio a modelo de BD."""
         return ScriptDB(
             id=script.id,
-            usuario_id=script.usuario_id,
-            texto_original=script.texto_original,
-            texto_mejorado=script.texto_mejorado,
-            duracion_objetivo=script.duracion_objetivo,
-            tono=script.tono.value,
-            audiencia_objetivo=script.audiencia_objetivo,
-            categoria=script.categoria.value,
-            palabras_clave=script.palabras_clave,
-            mejoras_aplicadas=script.mejoras_aplicadas,
+            usuario_id=script.user_id,
+            texto_original=script.original_text,
+            texto_mejorado=script.enhanced_text,
+            duracion_objetivo=script.target_duration,
+            tono=script.tone.value,
+            audiencia_objetivo=script.target_audience,
+            categoria=script.category.value,
+            palabras_clave=script.keywords,
+            mejoras_aplicadas=script.applied_improvements,
             embedding=script.embedding,
             created_at=script.created_at,
             updated_at=script.updated_at
@@ -70,13 +70,13 @@ class SQLScriptRepository(ScriptRepository):
         self.session.add(db_script)
 
         # Crear segmentos
-        for segmento in entity.segmentos:
+        for segmento in entity.segments:
             db_segmento = SegmentoScriptDB(
                 script_id=db_script.id,
-                texto=segmento.texto,
-                duracion=segmento.duracion,
-                tipo=segmento.tipo.value,
-                posicion=segmento.posicion
+                texto=segmento.text,
+                duracion=segmento.duration,
+                tipo=segmento.type.value,
+                posicion=segmento.position
             )
             self.session.add(db_segmento)
 
@@ -86,19 +86,21 @@ class SQLScriptRepository(ScriptRepository):
 
     async def get_by_id(self, id: str) -> Optional[Script]:
         """Obtiene un script por su ID."""
-        db_script = self.session.query(ScriptDB).filter(ScriptDB.id == id).first()
+        db_script = self.session.query(
+            ScriptDB).filter(ScriptDB.id == id).first()
         return self._to_entity(db_script) if db_script else None
 
     async def update(self, entity: Script) -> Script:
         """Actualiza un script existente."""
-        db_script = self.session.query(ScriptDB).filter(ScriptDB.id == entity.id).first()
+        db_script = self.session.query(ScriptDB).filter(
+            ScriptDB.id == entity.id).first()
         if not db_script:
             raise ValueError(f"Script with id {entity.id} not found")
 
         # Actualizar campos
-        db_script.texto_mejorado = entity.texto_mejorado
-        db_script.palabras_clave = entity.palabras_clave
-        db_script.mejoras_aplicadas = entity.mejoras_aplicadas
+        db_script.texto_mejorado = entity.enhanced_text
+        db_script.palabras_clave = entity.keywords
+        db_script.mejoras_aplicadas = entity.applied_improvements
         db_script.embedding = entity.embedding
         db_script.updated_at = datetime.utcnow()
 
@@ -107,13 +109,13 @@ class SQLScriptRepository(ScriptRepository):
             SegmentoScriptDB.script_id == entity.id
         ).delete()
 
-        for segmento in entity.segmentos:
+        for segmento in entity.segments:
             db_segmento = SegmentoScriptDB(
                 script_id=entity.id,
-                texto=segmento.texto,
-                duracion=segmento.duracion,
-                tipo=segmento.tipo.value,
-                posicion=segmento.posicion
+                texto=segmento.text,
+                duracion=segmento.duration,
+                tipo=segmento.type.value,
+                posicion=segmento.position
             )
             self.session.add(db_segmento)
 
@@ -123,7 +125,8 @@ class SQLScriptRepository(ScriptRepository):
 
     async def delete(self, id: str) -> bool:
         """Elimina un script."""
-        result = self.session.query(ScriptDB).filter(ScriptDB.id == id).delete()
+        result = self.session.query(ScriptDB).filter(
+            ScriptDB.id == id).delete()
         self.session.commit()
         return result > 0
 
@@ -144,9 +147,11 @@ class SQLScriptRepository(ScriptRepository):
 
         if filters:
             if 'usuario_id' in filters:
-                query = query.filter(ScriptDB.usuario_id == filters['usuario_id'])
+                query = query.filter(ScriptDB.usuario_id ==
+                                     filters['usuario_id'])
             if 'categoria' in filters:
-                query = query.filter(ScriptDB.categoria == filters['categoria'])
+                query = query.filter(ScriptDB.categoria ==
+                                     filters['categoria'])
 
         return query.scalar()
 
@@ -187,7 +192,8 @@ class SQLScriptRepository(ScriptRepository):
         if user_id:
             db_query = db_query.filter(ScriptDB.usuario_id == user_id)
 
-        db_scripts = db_query.order_by(desc(ScriptDB.created_at)).limit(20).all()
+        db_scripts = db_query.order_by(
+            desc(ScriptDB.created_at)).limit(20).all()
         return [self._to_entity(script) for script in db_scripts]
 
     async def get_similar_scripts(self, embedding: List[float], limit: int = 5) -> List[Script]:
@@ -207,7 +213,8 @@ class SQLScriptRepository(ScriptRepository):
         for script in db_scripts:
             if script.embedding and len(script.embedding) == len(embedding):
                 # Similitud coseno simplificada
-                dot_product = sum(a * b for a, b in zip(embedding, script.embedding))
+                dot_product = sum(
+                    a * b for a, b in zip(embedding, script.embedding))
                 magnitude_a = sum(a * a for a in embedding) ** 0.5
                 magnitude_b = sum(b * b for b in script.embedding) ** 0.5
 

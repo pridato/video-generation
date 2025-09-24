@@ -2,7 +2,6 @@
 Audio Service Interface
 """
 from abc import ABC, abstractmethod
-from typing import Optional
 
 
 class AudioService(ABC):

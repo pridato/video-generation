@@ -6,7 +6,14 @@ from typing import Dict, Any, List
 
 
 class AIService(ABC):
-    """Interfaz para servicios de IA."""
+    """
+    Interfaz para servicios de IA.
+
+    Se definen los metodos:
+    - enhance_script: Mejora un script usando IA.
+    - generate_keywords: Genera keywords SEO para un texto.
+    - generate_embedding: Genera embedding vectorial para un texto.
+    """
 
     @abstractmethod
     async def enhance_script(
