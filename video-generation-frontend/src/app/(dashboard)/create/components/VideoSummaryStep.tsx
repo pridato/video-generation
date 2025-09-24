@@ -25,6 +25,7 @@ import { ScriptResponse, Template, Voice, SpeedOption, Categoria, ClipSelectionR
   import { useCallback } from 'react'
 
 import { Dispatch, SetStateAction } from 'react';
+import { API_CONFIG, API_ENDPOINTS, HEADERS, HTTP_METHODS } from '@/constants'
 
 interface VideoSummaryStepProps {
   scriptMetadata: ScriptResponse | null;
@@ -74,7 +75,12 @@ export default function VideoSummaryStep({
 
   const isProcessing = isGeneratingAudio || isSelectingClips
 
-
+  /**
+   * Función para generar audio TTS usando la API
+   * @returns {Promise<{ success: boolean; duration?: number }>}
+   * - success: Indica si la generación fue exitosa
+   * - duration: Duración del audio generado (si fue exitoso)
+   */
   const generateAudio = useCallback(async (): Promise<{ success: boolean; duration?: number }> => {
     if (!scriptMetadata || !selectedVoice) {
       onError('Error', 'No hay datos del script o voz seleccionada')
@@ -95,18 +101,25 @@ export default function VideoSummaryStep({
         }))
       }
 
-      const response = await fetch('http://localhost:8000/generar-voz', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          script: scriptMetadata.script_mejorado,
-          voice_id: selectedVoice,
-          video_id: `temp_${Date.now()}`,
-          enhanced_script: enhancedScript
-        })
-      })
+      const response = await fetch(
+        `${API_CONFIG.BASE_URL}${API_ENDPOINTS.AUDIO.GENERATE}`,
+        {
+          method: HTTP_METHODS.POST,
+          headers: {
+            'Content-Type': HEADERS.CONTENT_TYPE.JSON,
+          },
+          body: JSON.stringify({
+            script: scriptMetadata.script_mejorado,
+            voice_id: selectedVoice,
+            video_id: `temp_${Date.now()}`,
+            enhanced_script: enhancedScript
+          })
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error('Error al generar la voz')
+      }
 
       if (!response.ok) {
         throw new Error('Error al generar la voz')
@@ -144,7 +157,9 @@ export default function VideoSummaryStep({
     }
   }, [scriptMetadata, selectedVoice, selectedSpeed, setScriptMetadata, onError])
 
-  // Función para seleccionar clips inteligentemente
+  /**
+   * Función para seleccionar clips automáticamente usando la API
+   */
   const selectClips = useCallback(async (audioDuration: number): Promise<boolean> => {
     const currentMetadata = scriptMetadataRef.current
     if (!currentMetadata) {
@@ -160,20 +175,21 @@ export default function VideoSummaryStep({
       const averageClipDuration = 5 // segundos promedio por clip
       const calculatedClipsCount = Math.max(3, Math.min(20, Math.ceil(audioDuration / averageClipDuration)))
 
-      console.log(`🎯 Calculando clips necesarios: ${audioDuration}s de audio necesita ~${calculatedClipsCount} clips`)
-
-      const response = await fetch('http://localhost:8000/seleccionar-clips', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const response = await fetch(
+        `${API_CONFIG.BASE_URL}${API_ENDPOINTS.CLIPS.SELECT}`,
+        {
+          method: HTTP_METHODS.POST,
+          headers: {
+            'Content-Type': HEADERS.CONTENT_TYPE.JSON,
+          },
+          body: JSON.stringify({
           enhanced_script: currentMetadata,
           categoria: selectedCategoria,
           audio_duration: audioDuration,
           target_clips_count: calculatedClipsCount
         })
-      })
+        }
+      )
 
       if (!response.ok) {
         throw new Error('Error al seleccionar clips')
@@ -189,16 +205,6 @@ export default function VideoSummaryStep({
           ...prevMetadata,
           clips_data: clipsData
         }
-
-        console.log('🎬 Clips seleccionados exitosamente:', {
-          clips_count: clipsData.selected_clips.length,
-          engagement: clipsData.estimated_engagement,
-          visual_coherence: clipsData.visual_coherence_score
-        })
-
-        console.log('📊 ScriptMetadata completo con clips:', updatedMetadata)
-        console.log('🔍 Audio data presente después de clips:', !!updatedMetadata.audio_data)
-        console.log('🔍 Clips data presente después de clips:', !!updatedMetadata.clips_data)
 
         return updatedMetadata
       })
@@ -232,7 +238,7 @@ export default function VideoSummaryStep({
 
 
 
-  // Efecto para generar contenido automáticamente al montar el componente
+  // Efecto para iniciar generación de audio y selección de clips automáticamente
   useEffect(() => {
 
     const generateContent = async () => {
@@ -279,7 +285,7 @@ export default function VideoSummaryStep({
 
 
 
-  // Efecto para actualizar contentReady cuando se completen audio y clips
+  // Efecto para marcar contenido como listo si ambos audio y clips están presentes
   useEffect(() => {
     if (scriptMetadata?.audio_data && scriptMetadata?.clips_data) {
       setContentReady(true)

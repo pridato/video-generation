@@ -1,76 +1,105 @@
 """
-Video generation endpoints
+Video generation and management endpoints - Refactored for hexagonal architecture
 """
 import logging
 from fastapi import APIRouter, HTTPException, Depends, status
-from app.schemas.video import VideoGenerationRequest, VideoGenerationResponse
-from app.api.deps import get_video_assembly_service
-from app.services.video_assembly_service import VideoAssemblyService
+
+from app.api.middleware.auth import get_user_id
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-@router.post("/generar-video", response_model=VideoGenerationResponse, summary="Generate Video")
+@router.post(
+    "/generate",
+    summary="Generate Video",
+    description="Genera un video completo - PENDIENTE DE IMPLEMENTACIÓN"
+)
 async def generate_video(
-    request: VideoGenerationRequest,
-    video_service: VideoAssemblyService = Depends(get_video_assembly_service)
+    user_id: str = Depends(get_user_id)
 ):
     """
-    Ensambla un video completo combinando audio, clips de video seleccionados
-    y subtítulos automáticos. Proceso completo de generación de video.
+    Genera un video completo a partir de script y configuración.
+
+    Esta funcionalidad está pendiente de implementación en la nueva arquitectura.
+    Incluirá:
+    - Selección automática de clips
+    - Generación de audio
+    - Ensamblaje de video
+    - Procesamiento y renderizado
     """
-    try:
-        logger.info(f"🎬 Iniciando generación de video: {request.title}")
+    logger.info(f"🎥 Generación de video solicitada por usuario: {user_id[:8]}...")
 
-        # Validar datos requeridos
-        if not request.script_metadata:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="script_metadata es requerido"
-            )
+    # TODO: Implementar generación completa de video con casos de uso
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Funcionalidad de generación de video pendiente de implementación"
+    )
 
-        if not request.script_metadata.get('audio_data'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="audio_data es requerido en script_metadata"
-            )
 
-        if not request.script_metadata.get('clips_data'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="clips_data es requerido en script_metadata"
-            )
+@router.get(
+    "/",
+    summary="List User Videos",
+    description="Lista los videos del usuario - PENDIENTE DE IMPLEMENTACIÓN"
+)
+async def list_videos(
+    user_id: str = Depends(get_user_id)
+):
+    """
+    Lista los videos generados por el usuario.
 
-        logger.info("🔄 Ensamblando video...")
+    Esta funcionalidad está pendiente de implementación en la nueva arquitectura.
+    """
+    logger.info(f"📋 Lista de videos solicitada por usuario: {user_id[:8]}...")
 
-        # Ensamblar video usando el servicio
-        video_result = await video_service.assemble_video(
-            script_metadata=request.script_metadata,
-            user_id=request.user_id,
-            title=request.title
-        )
+    # TODO: Implementar listado de videos con casos de uso
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Funcionalidad de listado de videos pendiente de implementación"
+    )
 
-        logger.info(f"✅ Video generado exitosamente: {video_result['video_id']}")
 
-        return VideoGenerationResponse(
-            success=True,
-            message="Video generado exitosamente",
-            video_id=video_result['video_id'],
-            video_url=video_result['video_url'],
-            thumbnail_url=video_result.get('thumbnail_url'),
-            duration=video_result['duration'],
-            file_size=video_result['file_size'],
-            title=video_result['title']
-        )
+@router.get(
+    "/{video_id}",
+    summary="Get Video Details",
+    description="Obtiene detalles de un video - PENDIENTE DE IMPLEMENTACIÓN"
+)
+async def get_video(
+    video_id: str,
+    user_id: str = Depends(get_user_id)
+):
+    """
+    Obtiene los detalles de un video específico.
 
-    except HTTPException:
-        # Re-raise HTTP exceptions as-is
-        raise
+    Esta funcionalidad está pendiente de implementación en la nueva arquitectura.
+    """
+    logger.info(f"🔍 Detalles de video solicitados: {video_id[:8]}... por usuario: {user_id[:8]}...")
 
-    except Exception as e:
-        logger.error(f"❌ Error generando video: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error ensamblando video: {str(e)}"
-        )
+    # TODO: Implementar obtención de video con casos de uso
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Funcionalidad de detalles de video pendiente de implementación"
+    )
+
+
+@router.delete(
+    "/{video_id}",
+    summary="Delete Video",
+    description="Elimina un video - PENDIENTE DE IMPLEMENTACIÓN"
+)
+async def delete_video(
+    video_id: str,
+    user_id: str = Depends(get_user_id)
+):
+    """
+    Elimina un video del usuario.
+
+    Esta funcionalidad está pendiente de implementación en la nueva arquitectura.
+    """
+    logger.info(f"🗑️ Eliminación de video solicitada: {video_id[:8]}... por usuario: {user_id[:8]}...")
+
+    # TODO: Implementar eliminación de video con casos de uso
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Funcionalidad de eliminación de video pendiente de implementación"
+    )

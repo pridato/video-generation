@@ -16,7 +16,7 @@ export const API_ENDPOINTS = {
 
   // Script Enhancement
   SCRIPT: {
-    ENHANCE: '/api/v1/mejorar-script',
+    ENHANCE: '/api/v1/enhanced-script',
   },
 
   // Audio Generation

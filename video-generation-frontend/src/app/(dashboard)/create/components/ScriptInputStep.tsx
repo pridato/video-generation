@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { ArrowRight, Sparkles, FileText, Timer } from 'lucide-react'
+import { ArrowRight, FileText, Timer } from 'lucide-react'
 import { Categoria } from '../types'
 
 interface ScriptInputStepProps {

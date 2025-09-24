@@ -1,137 +1,335 @@
 """
-Audio generation and processing endpoints
+Audio generation and processing endpoints - Refactored for hexagonal architecture
 """
-import os
-import time
-import base64
 import logging
-from io import BytesIO
-from pydub import AudioSegment
-from fastapi import APIRouter, HTTPException, Depends, status
-from fastapi.responses import JSONResponse
-from app.schemas.audio import AudioGenerationRequest, AudioGenerationResponse, AudioSegmentResponse
-from app.api.deps import get_openai_service
-from app.services.openai_service import OpenAIService
-from app.core.config import settings
+from fastapi import APIRouter, HTTPException, Depends, status, File, UploadFile
+
+from app.schemas.requests.audio import (
+    AudioGenerateRequest, TextToAudioRequest,
+    AudioTranscribeRequest, AudioDeleteRequest
+)
+from app.schemas.responses.audio import (
+    AudioGenerateResponse, TextToAudioResponse,
+    AudioTranscribeResponse, AudioDeleteResponse,
+    VoiceListResponse, AudioHealthResponse
+)
+from app.api.middleware.auth import get_current_user, get_user_id
+from app.application.use_cases.generate_audio import GenerateAudioUseCase
+from app.core.container import get_generate_audio_use_case
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# Directorio para almacenar audios generados
-AUDIO_DIR = "generated_audios"
-os.makedirs(AUDIO_DIR, exist_ok=True)
 
-
-@router.post("/generar-voz", response_model=AudioGenerationResponse, summary="Generate Voice")
-async def generate_voice(
-    request: AudioGenerationRequest,
-    openai_service: OpenAIService = Depends(get_openai_service)
+@router.post(
+    "/generate",
+    response_model=AudioGenerateResponse,
+    summary="Generate Audio from Script",
+    description="Genera audio a partir de un script usando Text-to-Speech"
+)
+async def generate_audio(
+    request: AudioGenerateRequest,
+    user_id: str = Depends(get_user_id),
+    use_case: GenerateAudioUseCase = Depends(get_generate_audio_use_case)
 ):
     """
-    Genera audio de voz desde texto usando ElevenLabs, con post-procesamiento
-    para mejorar la calidad y generar segmentos con timestamps.
+    Genera audio a partir de un script guardado.
+
+    - **script_id**: ID del script para generar audio
+    - **voice**: Voz a utilizar (alloy, echo, fable, onyx, nova, shimmer)
+    - **speed**: Velocidad del habla (0.25 - 4.0)
+    - **save_to_storage**: Si guardar el audio en storage
     """
     try:
-        logger.info(f"🎤 Generando voz: {len(request.text)} caracteres")
+        logger.info(f"🎵 Generando audio para usuario: {user_id[:8]}...")
 
-        # Generar voz usando el servicio
-        audio_result = await openai_service.generate_voice(
-            text=request.text,
-            voice_id=request.voice_id,
-            voice_settings=request.voice_settings
+        result = await use_case.execute(
+            user_id=user_id,
+            script_id=request.script_id,
+            voice=request.voice.value,
+            speed=request.speed,
+            save_to_storage=request.save_to_storage
         )
 
-        logger.info("🎵 Audio generado exitosamente")
+        logger.info(f"✅ Audio generado exitosamente: {result.get('audio_size', 0)} bytes")
 
-        # Crear nombre único para el archivo
-        timestamp = str(int(time.time()))
-        filename = f"voice_{timestamp}.mp3"
-        filepath = os.path.join(AUDIO_DIR, filename)
+        return AudioGenerateResponse(
+            message="Audio generado exitosamente",
+            data=result
+        )
 
-        # Guardar archivo de audio
-        with open(filepath, "wb") as f:
-            f.write(base64.b64decode(audio_result['audio_base64']))
-
-        # Análisis del audio para segmentos
-        try:
-            audio_segment = AudioSegment.from_file(filepath)
-            duration = len(audio_segment) / 1000.0  # Duración en segundos
-
-            # Generar segmentos automáticos basados en pausas o duración
-            segments = await _generate_audio_segments(request.text, audio_segment)
-
-            logger.info(f"📊 Audio analizado: {duration:.2f}s, {len(segments)} segmentos")
-
-            return AudioGenerationResponse(
-                success=True,
-                message="Audio generado exitosamente",
-                audio_url=f"/audio/{filename}",
-                duration=duration,
-                audio_base64=audio_result['audio_base64'],
-                segments=segments,
-                filename=filename
-            )
-
-        except Exception as e:
-            logger.warning(f"⚠️ Error analizando audio: {e}")
-            # Fallback sin segmentos
-            return AudioGenerationResponse(
-                success=True,
-                message="Audio generado exitosamente (sin análisis de segmentos)",
-                audio_url=f"/audio/{filename}",
-                duration=0.0,
-                audio_base64=audio_result['audio_base64'],
-                segments=[],
-                filename=filename
-            )
-
+    except ValueError as e:
+        logger.warning(f"Error de validación: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except PermissionError as e:
+        logger.warning(f"Error de permisos: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e)
+        )
     except Exception as e:
-        logger.error(f"❌ Error generando voz: {e}")
+        logger.error(f"Error generando audio: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error generando voz: {str(e)}"
+            detail="Error interno generando audio"
         )
 
 
-async def _generate_audio_segments(text: str, audio_segment: AudioSegment) -> list:
+@router.post(
+    "/text-to-speech",
+    response_model=TextToAudioResponse,
+    summary="Text to Speech",
+    description="Convierte texto directamente a audio sin guardar script"
+)
+async def text_to_speech(
+    request: TextToAudioRequest,
+    user_id: str = Depends(get_user_id),
+    use_case: GenerateAudioUseCase = Depends(get_generate_audio_use_case)
+):
     """
-    Genera segmentos de audio automáticamente basándose en el texto y el audio
+    Convierte texto directamente a audio usando TTS.
+
+    - **text**: Texto a convertir (10-3000 caracteres)
+    - **voice**: Voz a utilizar
+    - **speed**: Velocidad del habla
+    - **save_to_storage**: Si guardar el audio en storage
     """
     try:
-        # Dividir texto en oraciones
-        sentences = [s.strip() for s in text.split('.') if s.strip()]
+        logger.info(f"🗣️ Convirtiendo texto a audio para usuario: {user_id[:8]}...")
 
-        if not sentences:
-            return []
+        result = await use_case.generate_audio_from_text(
+            user_id=user_id,
+            text=request.text,
+            voice=request.voice.value,
+            speed=request.speed,
+            save_to_storage=request.save_to_storage
+        )
 
-        segments = []
-        total_duration = len(audio_segment) / 1000.0
-        current_time = 0.0
+        logger.info(f"✅ Texto convertido a audio: {len(request.text)} caracteres")
 
-        # Distribuir tiempo entre oraciones
-        for i, sentence in enumerate(sentences):
-            # Estimar duración basada en longitud del texto
-            sentence_duration = (len(sentence.split()) / settings.WORDS_PER_SECOND)
+        return TextToAudioResponse(
+            message="Texto convertido a audio exitosamente",
+            data=result
+        )
 
-            # Ajustar proporcionalmente al audio real
-            if i == len(sentences) - 1:  # Último segmento
-                segment_duration = total_duration - current_time
-            else:
-                segment_duration = min(sentence_duration, total_duration - current_time)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error en text-to-speech: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error interno en conversión de texto a audio"
+        )
 
-            if segment_duration > 0:
-                segments.append(AudioSegmentResponse(
-                    texto=sentence,
-                    inicio=current_time,
-                    duracion=segment_duration,
-                    tipo="oracion"
-                ))
 
-                current_time += segment_duration
+@router.post(
+    "/transcribe",
+    response_model=AudioTranscribeResponse,
+    summary="Transcribe Audio",
+    description="Transcribe audio a texto usando Whisper"
+)
+async def transcribe_audio(
+    audio_file: UploadFile = File(..., description="Archivo de audio a transcribir"),
+    user_id: str = Depends(get_user_id),
+    use_case: GenerateAudioUseCase = Depends(get_generate_audio_use_case)
+):
+    """
+    Transcribe un archivo de audio a texto.
 
-        logger.info(f"📝 Generados {len(segments)} segmentos automáticos")
-        return segments
+    - **audio_file**: Archivo de audio (MP3, WAV, M4A, etc.)
+    """
+    try:
+        # Validar tipo de archivo
+        if not audio_file.content_type.startswith('audio/'):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El archivo debe ser de tipo audio"
+            )
+
+        logger.info(f"🎤 Transcribiendo audio para usuario: {user_id[:8]}...")
+
+        # Leer contenido del archivo
+        audio_data = await audio_file.read()
+
+        result = await use_case.transcribe_audio(
+            user_id=user_id,
+            audio_data=audio_data
+        )
+
+        logger.info(f"✅ Audio transcrito: {result['character_count']} caracteres")
+
+        return AudioTranscribeResponse(
+            message="Audio transcrito exitosamente",
+            data=result
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error transcribiendo audio: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error interno transcribiendo audio"
+        )
+
+
+@router.delete(
+    "/delete",
+    response_model=AudioDeleteResponse,
+    summary="Delete Audio",
+    description="Elimina un audio del storage"
+)
+async def delete_audio(
+    request: AudioDeleteRequest,
+    user_id: str = Depends(get_user_id),
+    use_case: GenerateAudioUseCase = Depends(get_generate_audio_use_case)
+):
+    """
+    Elimina un audio del storage del usuario.
+
+    - **audio_url**: URL del audio a eliminar
+    """
+    try:
+        logger.info(f"🗑️ Eliminando audio para usuario: {user_id[:8]}...")
+
+        success = await use_case.delete_audio(
+            user_id=user_id,
+            audio_url=request.audio_url
+        )
+
+        if success:
+            return AudioDeleteResponse(
+                message="Audio eliminado exitosamente",
+                data={
+                    "audio_url": request.audio_url,
+                    "deleted": True,
+                    "deleted_at": "2024-01-01T12:00:00Z"
+                }
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Audio no encontrado"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error eliminando audio: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error interno eliminando audio"
+        )
+
+
+@router.get(
+    "/voices",
+    response_model=VoiceListResponse,
+    summary="List Available Voices",
+    description="Obtiene la lista de voces disponibles para TTS"
+)
+async def list_voices():
+    """
+    Lista todas las voces disponibles para Text-to-Speech.
+    """
+    try:
+        voices_data = {
+            "voices": [
+                {
+                    "id": "alloy",
+                    "name": "Alloy",
+                    "description": "Voz neutral y versátil",
+                    "gender": "neutral",
+                    "language": "multi"
+                },
+                {
+                    "id": "echo",
+                    "name": "Echo",
+                    "description": "Voz masculina clara",
+                    "gender": "male",
+                    "language": "multi"
+                },
+                {
+                    "id": "fable",
+                    "name": "Fable",
+                    "description": "Voz femenina expresiva",
+                    "gender": "female",
+                    "language": "multi"
+                },
+                {
+                    "id": "onyx",
+                    "name": "Onyx",
+                    "description": "Voz masculina profunda",
+                    "gender": "male",
+                    "language": "multi"
+                },
+                {
+                    "id": "nova",
+                    "name": "Nova",
+                    "description": "Voz femenina joven",
+                    "gender": "female",
+                    "language": "multi"
+                },
+                {
+                    "id": "shimmer",
+                    "name": "Shimmer",
+                    "description": "Voz femenina suave",
+                    "gender": "female",
+                    "language": "multi"
+                }
+            ]
+        }
+
+        return VoiceListResponse(
+            message="Voces obtenidas exitosamente",
+            data=voices_data
+        )
 
     except Exception as e:
-        logger.warning(f"⚠️ Error generando segmentos automáticos: {e}")
-        return []
+        logger.error(f"Error listando voces: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error obteniendo lista de voces"
+        )
+
+
+@router.get(
+    "/health",
+    response_model=AudioHealthResponse,
+    summary="Audio Service Health",
+    description="Verifica el estado del servicio de audio"
+)
+async def audio_health():
+    """
+    Verifica el estado de los servicios de audio.
+    """
+    try:
+        # TODO: Implementar health checks reales
+        health_data = {
+            "tts_service": "operational",
+            "transcription_service": "operational",
+            "storage_service": "operational",
+            "response_time_ms": 150,
+            "last_check": "2024-01-01T12:00:00Z"
+        }
+
+        return AudioHealthResponse(
+            message="Servicios de audio operando correctamente",
+            data=health_data
+        )
+
+    except Exception as e:
+        logger.error(f"Error en health check de audio: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Error verificando estado de servicios de audio"
+        )

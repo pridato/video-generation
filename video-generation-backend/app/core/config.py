@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Optional
 from pydantic_settings import BaseSettings
 from pydantic import Field
 
@@ -18,17 +18,20 @@ class Settings(BaseSettings):
 
     # CORS Configuration
     CORS_ORIGINS: str = Field(
-        default="http://localhost:3000",
+        default="http://localhost:3000,http://localhost:3001",
         description="Allowed CORS origins (comma-separated)"
     )
 
     # OpenAI Configuration
     OPENAI_API_KEY: str = Field(default="", description="OpenAI API key")
     OPENAI_MODEL: str = Field(default="gpt-4o-mini", description="OpenAI model")
+    TEMPERATURE: float = Field(default=0.7, description="OpenAI temperature")
+    MAX_TOKENS: int = Field(default=1500, description="Max tokens for OpenAI")
 
     # Supabase Configuration
     SUPABASE_URL: str = Field(default="", description="Supabase URL")
     SUPABASE_ANON_KEY: str = Field(default="", description="Supabase anonymous key")
+    SUPABASE_JWT_SECRET: str = Field(default="", description="Supabase JWT secret")
 
     # Script Enhancement Configuration
     MAX_SCRIPT_LENGTH: int = Field(default=2000, description="Maximum script length")
@@ -42,12 +45,32 @@ class Settings(BaseSettings):
     MAX_CLIPS_PER_SELECTION: int = Field(default=20, description="Maximum clips per selection")
     CLIP_CACHE_TTL_SECONDS: int = Field(default=3600, description="Clip cache TTL in seconds")
 
+    # Embedding Configuration
+    EMBEDDING_MODEL: str = Field(default="all-mpnet-base-v2", description="Embedding model")
+    EMBEDDING_DIMENSION: int = Field(default=768, description="Embedding dimension")
+
+    # TTS Configuration
+    TTS_MODEL: str = Field(default="gpt-4o-mini-tts", description="TTS model")
+
     # File Upload Configuration
     MAX_FILE_SIZE_MB: int = Field(default=50, description="Maximum file size in MB")
     UPLOAD_PATH: str = Field(default="uploads/", description="Upload directory path")
 
+    # Security Configuration
+    SECRET_KEY: str = Field(default="", description="Secret key for JWT")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30, description="Access token expiration")
+    ALGORITHM: str = Field(default="HS256", description="JWT algorithm")
+
+    # Rate Limiting Configuration
+    RATE_LIMIT_PER_MINUTE: int = Field(default=60, description="Rate limit per minute")
+    RATE_LIMIT_BURST: int = Field(default=10, description="Rate limit burst")
+
     # Logging Configuration
     LOG_LEVEL: str = Field(default="INFO", description="Logging level")
+    LOG_FORMAT: str = Field(
+        default="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        description="Log format"
+    )
 
     class Config:
         env_file = ".env"
@@ -69,6 +92,11 @@ class Settings(BaseSettings):
         if isinstance(self.CORS_ORIGINS, str):
             return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
         return self.CORS_ORIGINS
+
+    @property
+    def jwt_configured(self) -> bool:
+        """Check if JWT is properly configured"""
+        return bool(self.SECRET_KEY and self.SUPABASE_JWT_SECRET)
 
 
 # Global settings instance
