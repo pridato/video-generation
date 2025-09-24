@@ -6,7 +6,7 @@ from typing import List, Optional
 from datetime import datetime
 
 from .base import BaseRepository
-from ..entities.video import Video, EstadoVideo
+from ..entities.video import Video, VideoStatus
 
 
 class VideoRepository(BaseRepository[Video]):
@@ -23,7 +23,7 @@ class VideoRepository(BaseRepository[Video]):
         pass
 
     @abstractmethod
-    async def get_by_estado(self, estado: EstadoVideo, limit: int = 100) -> List[Video]:
+    async def get_by_estado(self, estado: VideoStatus, limit: int = 100) -> List[Video]:
         """Obtiene videos por estado."""
         pass
 
@@ -43,7 +43,7 @@ class VideoRepository(BaseRepository[Video]):
         pass
 
     @abstractmethod
-    async def update_estado(self, video_id: str, estado: EstadoVideo, error_mensaje: Optional[str] = None) -> bool:
+    async def update_estado(self, video_id: str, estado: VideoStatus, error_mensaje: Optional[str] = None) -> bool:
         """Actualiza el estado de un video."""
         pass
 

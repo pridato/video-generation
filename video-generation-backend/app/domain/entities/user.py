@@ -6,103 +6,147 @@ from typing import Optional
 from datetime import datetime
 from enum import Enum
 
+# --------------------------------------------------------------
+#                  Tipos Auxiliares para Usuario
+# --------------------------------------------------------------
 
-class TipoSuscripcion(str, Enum):
-    GRATUITO = "gratuito"
-    BASICO = "basico"
+
+class SubscriptionTier(str, Enum):
+    """
+    Niveles de suscripción disponibles.
+    """
+    FREE = "gratuito"
+    BASIC = "basico"
     PREMIUM = "premium"
-    EMPRESARIAL = "empresarial"
+    BUSINESS = "empresarial"
 
 
-class EstadoUsuario(str, Enum):
-    ACTIVO = "activo"
-    INACTIVO = "inactivo"
-    SUSPENDIDO = "suspendido"
-    BLOQUEADO = "bloqueado"
+class UserStatus(str, Enum):
+    """
+    Estado del usuario en el sistema.
+    """
+    ACTIVE = "activo"
+    INACTIVE = "inactivo"
+    SUSPENDED = "suspendido"
+    BLOCKED = "bloqueado"
 
 
 @dataclass
-class LimitesUsuario:
-    """Limites de uso por tipo de suscripción."""
-    videos_por_mes: int
-    duracion_maxima_video: int  # segundos
+class UserLimits:
+    """
+    Limites de uso por tipo de suscripción.
+    """
+    videos_per_month: int
+    max_video_duration: int  # segundos
     templates_premium: bool
-    soporte_prioritario: bool
-    analytics_avanzado: bool
+    priority_support: bool
+    advanced_analytics: bool
+
+
+# --------------------------------------------------------------
+#                  Entidad Principal: Usuario
+# --------------------------------------------------------------
 
 
 @dataclass
-class Usuario:
+class User:
     """Entidad que representa un usuario del sistema."""
     id: str  # UUID de Supabase
     email: str
-    nombre: Optional[str]
+    name: Optional[str]
     avatar_url: Optional[str]
-    tipo_suscripcion: TipoSuscripcion
-    estado: EstadoUsuario
-    videos_generados_mes_actual: int
-    total_videos_generados: int
-    fecha_registro: datetime
-    ultima_actividad: Optional[datetime]
+    subscription_tier: SubscriptionTier
+    status: UserStatus
+    videos_generated_current_month: int
+    total_videos_generated: int
+    registration_date: datetime
+    last_activity: Optional[datetime]
     stripe_customer_id: Optional[str]
-    preferencias: dict  # JSON con preferencias del usuario
+    preferences: dict  # JSON con preferencias del usuario
 
     @property
-    def limites(self) -> LimitesUsuario:
-        """Retorna los límites basados en el tipo de suscripción."""
-        limites_por_tipo = {
-            TipoSuscripcion.GRATUITO: LimitesUsuario(
-                videos_por_mes=3,
-                duracion_maxima_video=30,
+    def limits(self) -> UserLimits:
+        """
+        Retorna los límites basados en el tipo de suscripción.
+
+        Returns:
+            UserLimits: Límites correspondientes al tipo de suscripción.
+        """
+        limits_per_tier = {
+            SubscriptionTier.FREE: UserLimits(
+                videos_per_month=3,
+                max_video_duration=30,
                 templates_premium=False,
-                soporte_prioritario=False,
-                analytics_avanzado=False
+                priority_support=False,
+                advanced_analytics=False
             ),
-            TipoSuscripcion.BASICO: LimitesUsuario(
-                videos_por_mes=10,
-                duracion_maxima_video=60,
+            SubscriptionTier.BASIC: UserLimits(
+                videos_per_month=10,
+                max_video_duration=60,
                 templates_premium=False,
-                soporte_prioritario=False,
-                analytics_avanzado=False
+                priority_support=False,
+                advanced_analytics=False
             ),
-            TipoSuscripcion.PREMIUM: LimitesUsuario(
-                videos_por_mes=50,
-                duracion_maxima_video=120,
+            SubscriptionTier.PREMIUM: UserLimits(
+                videos_per_month=50,
+                max_video_duration=120,
                 templates_premium=True,
-                soporte_prioritario=True,
-                analytics_avanzado=True
+                priority_support=True,
+                advanced_analytics=True
             ),
-            TipoSuscripcion.EMPRESARIAL: LimitesUsuario(
-                videos_por_mes=200,
-                duracion_maxima_video=300,
+            SubscriptionTier.BUSINESS: UserLimits(
+                videos_per_month=200,
+                max_video_duration=300,
                 templates_premium=True,
-                soporte_prioritario=True,
-                analytics_avanzado=True
+                priority_support=True,
+                advanced_analytics=True
             )
         }
-        return limites_por_tipo[self.tipo_suscripcion]
+        return limits_per_tier[self.subscription_tier]
 
-    def puede_generar_video(self) -> bool:
-        """Verifica si el usuario puede generar un video."""
+    def can_generate_video(self) -> bool:
+        """
+        Verifica si el usuario puede generar un video.
+
+        Returns:
+            bool: True si puede generar un video, False en caso contrario.
+        """
         return (
-            self.estado == EstadoUsuario.ACTIVO and
-            self.videos_generados_mes_actual < self.limites.videos_por_mes
+            self.status == UserStatus.ACTIVE and
+            self.videos_generated_current_month < self.limits.videos_per_month
         )
 
-    def puede_usar_duracion(self, duracion: int) -> bool:
-        """Verifica si el usuario puede usar la duración solicitada."""
-        return duracion <= self.limites.duracion_maxima_video
+    def can_use_duration(self, duration: int) -> bool:
+        """
+        Verifica si el usuario puede usar la duración solicitada.
 
-    def incrementar_uso_mensual(self) -> None:
-        """Incrementa el contador de videos generados este mes."""
-        self.videos_generados_mes_actual += 1
-        self.total_videos_generados += 1
-        self.ultima_actividad = datetime.utcnow()
+        Args:
+            duration (int): Duración del video en segundos.
 
-    def es_premium(self) -> bool:
-        """Verifica si el usuario tiene suscripción premium o superior."""
-        return self.tipo_suscripcion in [TipoSuscripcion.PREMIUM, TipoSuscripcion.EMPRESARIAL]
+        Returns:
+            bool: True si puede usar la duración, False en caso contrario.
+        """
+        return duration <= self.limits.max_video_duration
 
-    def actualizar_actividad(self) -> None:
-        """Actualiza la fecha de última actividad."""
-        self.ultima_actividad = datetime.utcnow()
+    def increase_monthly_usage(self) -> None:
+        """
+        Incrementa el contador de videos generados este mes.
+        """
+        self.videos_generated_current_month += 1
+        self.total_videos_generated += 1
+        self.last_activity = datetime.utcnow()
+
+    def is_premium(self) -> bool:
+        """
+        Verifica si el usuario tiene suscripción premium o superior.
+
+        Returns:
+            bool: True si es premium o empresarial, False en caso contrario.
+        """
+        return self.subscription_tier in [SubscriptionTier.PREMIUM, SubscriptionTier.BUSINESS]
+
+    def update_activity(self) -> None:
+        """
+        Actualiza la fecha de última actividad.
+        """
+        self.last_activity = datetime.utcnow()

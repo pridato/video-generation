@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Dict, Any
 
 from app.domain.entities.script import Script, ScriptSegment, Tone, Category, SegmentType
-from app.domain.entities.user import Usuario
+from app.domain.entities.user import User
 from app.domain.repositories.script_repository import ScriptRepository
 from app.domain.repositories.user_repository import UserRepository
 from app.domain.services.script_domain_service import ScriptDomainService
@@ -62,7 +62,7 @@ class EnhanceScriptUseCase:
             raise ValueError("Usuario no encontrado")
 
         # Validar límites del usuario (esto podría expandirse)
-        if not user.puede_generar_video():
+        if not user.can_generate_video():
             raise PermissionError("Usuario ha alcanzado su límite mensual")
 
         # Validar parámetros
