@@ -85,7 +85,7 @@ class Video:
     """
     id: str
     user_id: str
-    script_id: str
+    script: str
     title: str
     description: Optional[str]
     template: TemplateVideo
@@ -212,7 +212,7 @@ class Video:
         """
         return (
             self.state == VideoStatus.PENDING and
-            bool(self.script_id) and
+            bool(self.script) and
             bool(self.selected_clips) and
             bool(self.template.id)
         )

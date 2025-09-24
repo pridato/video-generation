@@ -15,7 +15,7 @@ class CreditTransactionModel:
         self.stripe_payment_id = data.get('stripe_payment_id')
         self.stripe_refund_id = data.get('stripe_refund_id')
         self.credit_pack_id = data.get('credit_pack_id')
-        self.price_paid_usd = Decimal(str(data.get('price_paid_usd', 0)))
+        self.price_paid_eur = Decimal(str(data.get('price_paid_eur', 0)))
         self.description = data.get('description')
         self.metadata = data.get('metadata') or {}
         self.created_at = datetime.fromisoformat(data['created_at'].replace(
@@ -33,7 +33,7 @@ class CreditTransactionModel:
             stripe_payment_id=self.stripe_payment_id,
             stripe_refund_id=self.stripe_refund_id,
             credit_pack_id=self.credit_pack_id,
-            price_paid_usd=self.price_paid_usd,
+            price_paid_eur=self.price_paid_eur,
             description=self.description,
             metadata=self.metadata,
             created_at=self.created_at

@@ -59,7 +59,7 @@ class User:
     status: UserStatus
     videos_generated_current_month: int
     total_videos_generated: int
-    registration_date: datetime
+    registration_date: Optional[datetime]
     last_activity: Optional[datetime]
     stripe_customer_id: Optional[str]
     preferences: dict  # JSON con preferencias del usuario

@@ -35,7 +35,7 @@ class CreditTransaction:
     stripe_payment_id: Optional[str] = None
     stripe_refund_id: Optional[str] = None
     credit_pack_id: Optional[str] = None
-    price_paid_usd: Optional[Decimal] = None
+    price_paid_eur: Optional[Decimal] = None
     description: Optional[str] = None
     metadata: Dict[str, Any] = {}
     created_at: Optional[datetime] = None
@@ -88,7 +88,7 @@ class CreditPackage:
         Calcula el ahorro vs precio base ($1 por crédito).
 
         Returns:
-            Decimal: Ahorro en USD.
+            Decimal: Ahorro en euros.
         """
         base_price = Decimal('1.0') * self.credits
         return base_price - self.price_eur
@@ -103,7 +103,7 @@ class UserCreditBalance:
     credits_limit_per_month: int
     last_credits_reset: datetime
     total_credits_purchased: int
-    total_spent_usd: Decimal
+    total_spent_eur: Decimal
     can_purchase_more: bool
     days_until_reset: int
 
