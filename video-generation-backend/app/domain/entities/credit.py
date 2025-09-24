@@ -101,7 +101,7 @@ class UserCreditBalance:
     credits_current: int
     credits_used_this_month: int
     credits_limit_per_month: int
-    last_credits_reset: datetime
+    last_credits_reset: Optional[datetime]
     total_credits_purchased: int
     total_spent_eur: Decimal
     can_purchase_more: bool

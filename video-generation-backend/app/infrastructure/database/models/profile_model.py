@@ -3,7 +3,8 @@ Se refiere a la entidad User.
 """
 
 from datetime import datetime
-from app.domain.entities.user import User, SubscriptionTier, UserStatus
+from app.domain.entities.user import User, SubscriptionTier, UserStatus, User
+from app.domain.entities.credit import UserCreditBalance
 
 
 class ProfileModel:
@@ -58,4 +59,17 @@ class ProfileModel:
                 "total_credits_purchased": self.total_credits_purchased,
                 "total_spent_eur": self.total_spent_eur
             }
+        )
+
+    def to_entity_user_credit_balance(self) -> UserCreditBalance:
+        return UserCreditBalance(
+            user_id=self.id,
+            credits_current=self.credits_current,
+            credits_used_this_month=self.credits_used_this_month,
+            credits_limit_per_month=self.credits_limit_per_month,
+            last_credits_reset=self.last_credits_reset,
+            total_credits_purchased=self.total_credits_purchased,
+            total_spent_eur=self.total_spent_eur,
+            can_purchase_more=True,
+            days_until_reset=30,
         )

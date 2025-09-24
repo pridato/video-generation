@@ -7,7 +7,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 from decimal import Decimal
 
-from ..entities.credit import CreditTransaction, CreditPackage
+from ..entities.credit import CreditTransaction, CreditPackage, UserCreditBalance
 
 
 class CreditRepository(ABC):
@@ -20,7 +20,7 @@ class CreditRepository(ABC):
         video_id: str,
         credits: int,
         description: str = "Video generation"
-    ) -> Dict[str, Any]:
+    ) -> UserCreditBalance:
         """
         Consume créditos del usuario para generar un video.
 
@@ -31,7 +31,7 @@ class CreditRepository(ABC):
             description (str): Descripción de la transacción. Default es "Video generation".
 
         Returns:
-            Dict[str, Any]: Información sobre la transacción y el balance actualizado.
+            UserCreditBalance: Información del balance de créditos actualizado.
         """
         pass
 
@@ -44,7 +44,7 @@ class CreditRepository(ABC):
         stripe_payment_id: Optional[str] = None,
         pack_id: Optional[str] = None,
         description: str = "Compra de créditos"
-    ) -> Dict[str, Any]:
+    ) -> UserCreditBalance:
         """
         Agrega créditos al usuario (compra).
 
@@ -56,12 +56,12 @@ class CreditRepository(ABC):
             pack_id (Optional[str]): ID del paquete de créditos comprado.
 
         Returns:
-            Dict[str, Any]: Información sobre la transacción y el balance actualizado.
+            UserCreditBalance: Información del balance de créditos actualizado.
         """
         pass
 
     @abstractmethod
-    async def get_user_credit_balance(self, user_id: str) -> Dict[str, Any]:
+    async def get_user_credit_balance(self, user_id: str) -> UserCreditBalance:
         """
         Obtiene el balance actual de créditos del usuario.
 
@@ -69,7 +69,7 @@ class CreditRepository(ABC):
             user_id (str): ID del usuario.
 
         Returns:
-            Dict[str, Any]: Información del balance de créditos.
+            UserCreditBalance: Información del balance de créditos del usuario.
         """
         pass
 
