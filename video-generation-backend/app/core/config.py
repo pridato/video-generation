@@ -1,10 +1,18 @@
 import os
 from typing import List, Optional
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 
 
 class Settings(BaseSettings):
+    """Settings centralizadas usando Pydantic v2."""
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="ignore"
+    )
+
     # App Configuration
     APP_NAME: str = "Video Generation API"
     APP_VERSION: str = "1.0.0"
@@ -72,9 +80,10 @@ class Settings(BaseSettings):
         description="Log format"
     )
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    # Database Configuration
+    DATABASE_URL: str = Field(default="sqlite:///./video_generation.db", description="Database URL")
+    DATABASE_POOL_SIZE: int = Field(default=5, description="Database connection pool size")
+    DATABASE_MAX_OVERFLOW: int = Field(default=10, description="Database max overflow connections")
 
     @property
     def openai_configured(self) -> bool:
@@ -97,6 +106,21 @@ class Settings(BaseSettings):
     def jwt_configured(self) -> bool:
         """Check if JWT is properly configured"""
         return bool(self.SECRET_KEY and self.SUPABASE_JWT_SECRET)
+
+    @property
+    def is_production(self) -> bool:
+        """Check if running in production environment"""
+        return self.ENVIRONMENT.lower() == "production"
+
+    @property
+    def is_development(self) -> bool:
+        """Check if running in development environment"""
+        return self.ENVIRONMENT.lower() in ["development", "dev"]
+
+    @property
+    def is_testing(self) -> bool:
+        """Check if running in testing environment"""
+        return self.ENVIRONMENT.lower() in ["testing", "test"]
 
 
 # Global settings instance
