@@ -1,5 +1,5 @@
 """
-Domain entities for script management
+Entidad de dominio para gestión de scripts de video.
 """
 from dataclasses import dataclass
 from typing import List, Optional

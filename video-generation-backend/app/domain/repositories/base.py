@@ -32,7 +32,12 @@ class BaseRepository(ABC, Generic[T]):
     @property
     @abstractmethod
     def _model(self) -> type:
-        """Modelo de la entidad específica"""
+        """
+        Modelo de la entidad que maneja el repositorio.
+
+        Returns:
+            type: La clase del modelo de la entidad.
+        """
         pass
 
     def create(self, entity: T) -> T:

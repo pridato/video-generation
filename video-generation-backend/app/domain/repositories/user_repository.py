@@ -4,17 +4,34 @@ User repository interface
 from abc import abstractmethod
 from typing import List, Optional
 from datetime import datetime
+from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 from .base import BaseRepository
 from ..entities.user import User, SubscriptionTier, UserStatus
 
 
 class UserRepository(BaseRepository[User]):
-    """Interfaz del repositorio para usuarios."""
+    """
+    Repositorio para gestionar usuarios.
+    Hereda CRUD básico + métodos específicos de usuario.
+    """
+
+    @property
+    def _model(self) -> type:
+        return User
 
     @abstractmethod
     async def get_by_email(self, email: str) -> Optional[User]:
-        """Obtiene un usuario por email."""
+        """
+        Busca un usuario por su email
+
+        Args:
+            email (str): Email del usuario a buscar.
+
+        Returns:
+            Optional[User]: Usuario encontrado o None si no existe.
+        """
         pass
 
     @abstractmethod

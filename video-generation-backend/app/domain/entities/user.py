@@ -1,5 +1,5 @@
 """
-Domain entities for user management
+Entidad de dominio para la gestión de usuarios.
 """
 from dataclasses import dataclass
 from typing import Optional

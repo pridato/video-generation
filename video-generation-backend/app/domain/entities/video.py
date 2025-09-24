@@ -1,5 +1,5 @@
 """
-Domain entities for video management
+Entidad de dominio para la gestión de videos.
 """
 from dataclasses import dataclass
 from typing import List, Optional, Dict, Any
