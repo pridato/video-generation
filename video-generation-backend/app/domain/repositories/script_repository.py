@@ -12,6 +12,10 @@ from ..entities.script import Script
 class ScriptRepository(BaseRepository[Script]):
     """Interfaz del repositorio para scripts."""
 
+    @property
+    def _model(self) -> type:
+        return Script
+
     @abstractmethod
     async def get_by_user_id(self, user_id: str, limit: int = 10, offset: int = 0) -> List[Script]:
         """Obtiene scripts por ID de usuario."""

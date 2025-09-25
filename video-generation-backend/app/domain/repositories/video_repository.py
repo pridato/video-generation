@@ -12,6 +12,10 @@ from ..entities.video import Video, VideoStatus
 class VideoRepository(BaseRepository[Video]):
     """Interfaz del repositorio para videos."""
 
+    @property
+    def _model(self) -> type:
+        return Video
+
     @abstractmethod
     async def create_video(self, entity: Video) -> Video:
         """

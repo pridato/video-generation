@@ -1,3 +1,19 @@
+"""
+
+Configuración centralizada usando Pydantic v2
+
+🎯 PROPÓSITO:
+- Maneja TODAS las configuraciones de la app (API keys, URLs, límites)
+- Usa Pydantic para validación automática
+- Lee variables de entorno (.env)
+- Proporciona valores por defecto seguros
+
+💡 COMO FUNCIONA:
+- Las variables se leen automáticamente de .env
+- Pydantic valida tipos y formatos
+- Propiedades calculan valores derivados
+"""
+
 from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
@@ -12,38 +28,40 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
-    # App Configuration
+    # ============= APP CONFIGURATION =============
     APP_NAME: str = "Video Generation API"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = Field(default=False, description="Debug mode")
     ENVIRONMENT: str = Field(default="development", description="Environment")
 
-    # API Configuration
+    # ============= API CONFIGURATION =============
     API_HOST: str = Field(default="0.0.0.0", description="API host")
     API_PORT: int = Field(default=8000, description="API port")
     API_V1_PREFIX: str = "/api/v1"
 
-    # CORS Configuration
+    # ============= CORS CONFIGURATION =============
     CORS_ORIGINS: str = Field(
         default="http://localhost:3000,http://localhost:3001",
         description="Allowed CORS origins (comma-separated)"
     )
 
-    # OpenAI Configuration
+    # ============= OPENAI CONFIGURATION =============
     OPENAI_API_KEY: str = Field(default="", description="OpenAI API key")
     OPENAI_MODEL: str = Field(default="gpt-4o-mini",
                               description="OpenAI model")
     TEMPERATURE: float = Field(default=0.7, description="OpenAI temperature")
     MAX_TOKENS: int = Field(default=1500, description="Max tokens for OpenAI")
+    # TTS Configuration
+    TTS_MODEL: str = Field(default="gpt-4o-mini-tts", description="TTS model")
 
-    # Supabase Configuration
+    # ============= SUPABASE CONFIGURATION =============
     SUPABASE_URL: str = Field(default="", description="Supabase URL")
     SUPABASE_ANON_KEY: str = Field(
         default="", description="Supabase anonymous key")
     SUPABASE_JWT_SECRET: str = Field(
         default="", description="Supabase JWT secret")
 
-    # Script Enhancement Configuration
+    # ============= SCRIPT CONFIGURATION =============
     MAX_SCRIPT_LENGTH: int = Field(
         default=2000, description="Maximum script length")
     TARGET_DURATION_MIN: int = Field(
@@ -53,7 +71,7 @@ class Settings(BaseSettings):
     WORDS_PER_SECOND: float = Field(
         default=2.0, description="Average speech rate")
 
-    # Clip Selection Configuration
+    # ============= CLIP SELECTION CONFIGURATION =============
     DEFAULT_SIMILARITY_THRESHOLD: float = Field(
         default=0.3, description="Default similarity threshold")
     DEFAULT_QUALITY_THRESHOLD: float = Field(
@@ -63,46 +81,45 @@ class Settings(BaseSettings):
     CLIP_CACHE_TTL_SECONDS: int = Field(
         default=3600, description="Clip cache TTL in seconds")
 
-    # Embedding Configuration
+    # ============= EMBEDDING CONFIGURATION =============
     EMBEDDING_MODEL: str = Field(
         default="all-mpnet-base-v2", description="Embedding model")
     EMBEDDING_DIMENSION: int = Field(
         default=768, description="Embedding dimension")
 
-    # TTS Configuration
-    TTS_MODEL: str = Field(default="gpt-4o-mini-tts", description="TTS model")
-
-    # File Upload Configuration
+    # ============= FILE UPLOAD CONFIGURATION =============
     MAX_FILE_SIZE_MB: int = Field(
         default=50, description="Maximum file size in MB")
     UPLOAD_PATH: str = Field(
         default="uploads/", description="Upload directory path")
 
-    # Security Configuration
+    # ============= SECURITY CONFIGURATION =============
     SECRET_KEY: str = Field(default="", description="Secret key for JWT")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
         default=30, description="Access token expiration")
     ALGORITHM: str = Field(default="HS256", description="JWT algorithm")
 
-    # Rate Limiting Configuration
+    # ============= RATE LIMITING CONFIGURATION =============
     RATE_LIMIT_PER_MINUTE: int = Field(
         default=60, description="Rate limit per minute")
     RATE_LIMIT_BURST: int = Field(default=10, description="Rate limit burst")
 
-    # Logging Configuration
+    # ============= LOGGING CONFIGURATION =============
     LOG_LEVEL: str = Field(default="INFO", description="Logging level")
     LOG_FORMAT: str = Field(
         default="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         description="Log format"
     )
 
-    # Database Configuration
+    # ============= DATABASE CONFIGURATION =============
     DATABASE_URL: str = Field(
         default="sqlite:///./video_generation.db", description="Database URL")
     DATABASE_POOL_SIZE: int = Field(
         default=5, description="Database connection pool size")
     DATABASE_MAX_OVERFLOW: int = Field(
         default=10, description="Database max overflow connections")
+
+    # ============= PROPIEDADES CALCULADAS =============
 
     @property
     def openai_configured(self) -> bool:

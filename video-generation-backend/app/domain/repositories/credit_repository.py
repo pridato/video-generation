@@ -13,6 +13,10 @@ from ..entities.credit import CreditTransaction, CreditPackage, UserCreditBalanc
 class CreditRepository(ABC):
     """Interfaz del repositorio para créditos."""
 
+    @property
+    def _model(self) -> type:
+        return UserCreditBalance
+
     @abstractmethod
     async def consume_credits(
         self,

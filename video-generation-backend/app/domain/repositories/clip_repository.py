@@ -7,6 +7,10 @@ from ..entities.clip import AssetClip, VideoClip
 class ClipRepository(BaseRepository[AssetClip]):
     """Interfaz del repositorio para clips."""
 
+    @property
+    def _model(self) -> type:
+        return AssetClip
+
     @abstractmethod
     async def search_by_embedding(self, embedding: List[float], limit: int = 20, target_duration: Optional[int] = None,
                                   emotion_filter: Optional[str] = None) -> List[AssetClip]:
