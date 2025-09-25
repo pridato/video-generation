@@ -40,7 +40,8 @@ class BaseRepository(ABC, Generic[T]):
         """
         pass
 
-    def create(self, entity: T) -> T:
+    @abstractmethod
+    async def create(self, entity: T) -> T:
         """
         Crea una nueva entidad.
 
@@ -50,10 +51,7 @@ class BaseRepository(ABC, Generic[T]):
         Returns:
             T: La entidad creada con ID asignado.
         """
-        self.session.add(entity)
-        self.session.commit()
-        self.session.refresh(entity)
-        return entity
+        pass
 
     async def get_by_id(self, id: str) -> Optional[T]:
         """

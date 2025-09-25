@@ -14,6 +14,30 @@ class SupabaseUserRepository(UserRepository):
     def __init__(self, supabase_client: SupabaseClient):
         self.client = supabase_client.client
 
+    # ============= OPERACIONES CRUD =============
+
+    async def get_by_id(self, id: str) -> Optional[User]:
+        """
+        Obtiene un usuario por su ID.
+
+        Args:
+            id (str): ID del usuario.
+
+        Returns:
+            Optional[User]: Usuario encontrado o None si no existe.
+        """
+        try:
+            result = self.client.table("profiles").select(
+                "*").eq("id", id).single().execute()
+            if not result.data:
+                return None
+            return ProfileModel(result.data).to_entity()
+        except Exception as e:
+            logger.error(f"Error obteniendo usuario: {str(e)}")
+            return None
+
+    # ============= CONSULTAS ESPECÍFICAS =============
+
     async def get_by_email(self, email: str) -> Optional[User]:
         try:
             # buscamos el usuario por email
@@ -25,17 +49,6 @@ class SupabaseUserRepository(UserRepository):
                 return None
 
             # convertimos el resultado a entidad User
-            return ProfileModel(result.data).to_entity()
-        except Exception as e:
-            logger.error(f"Error obteniendo usuario: {str(e)}")
-            return None
-
-    async def get_by_id(self, id: str) -> Optional[User]:
-        try:
-            result = self.client.table("profiles").select(
-                "*").eq("id", id).single().execute()
-            if not result.data:
-                return None
             return ProfileModel(result.data).to_entity()
         except Exception as e:
             logger.error(f"Error obteniendo usuario: {str(e)}")

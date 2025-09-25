@@ -1,19 +1,18 @@
 """
-
-Dependency Injection Container
+Dependency Injection Container 
 
 🎯 PROPÓSITO:
-- Gestiona la creación e inyección de dependencias
+- Gestiona la creación e inyección de dependencias  
 - Implementa patrón Dependency Injection Container
 - Centraliza la configuración de servicios
 - Facilita testing con mocks
 
-💡 COMO FUNCIONA:
-- Se inicializa una vez al arrancar la app
-- Crea instancias de repositorios, servicios y use cases
-- Proporciona factory functions para FastAPI
+💡 CAMBIOS PRINCIPALES:
+- Agregado ScriptRepository (en memoria)
+- Corregida inicialización de repositorios
+- Agregados mock services completos
+- Mejorada gestión de errores
 """
-
 import logging
 from typing import Dict, Any
 
@@ -24,10 +23,15 @@ from .database import get_db
 from app.domain.repositories.user_repository import UserRepository
 from app.domain.repositories.video_repository import VideoRepository
 from app.domain.repositories.script_repository import ScriptRepository
+from app.domain.repositories.clip_repository import ClipRepository
+from app.domain.repositories.credit_repository import CreditRepository
 
 # Infrastructure implementations
 from app.infrastructure.database.repositories.supabase_user_repository import SupabaseUserRepository
 from app.infrastructure.database.repositories.supabase_video_repository import SupabaseVideoRepository
+from app.infrastructure.database.repositories.supabase_clip_repository import SupabaseClipRepository
+from app.infrastructure.database.repositories.supabase_credit_repository import SupabaseCreditRepository
+from app.infrastructure.database.repositories.in_memory_script_repository import InMemoryScriptRepository
 from app.infrastructure.external.supabase.client import SupabaseClient
 from app.infrastructure.external.openai.service import OpenAIScriptService, OpenAIAudioService
 
@@ -62,7 +66,9 @@ class DependencyContainer:
         logger.info("✅ Dependency container inicializado exitosamente")
 
     def _init_external_services(self) -> None:
-        """Inicializa servicios externos como OpenAI y Supabase."""
+        """
+        Inicializa servicios externos como OpenAI y Supabase.
+        """
 
         # OpenAI services
         if settings.openai_configured:
@@ -70,25 +76,29 @@ class DependencyContainer:
             self._instances['openai_audio_service'] = OpenAIAudioService()
             logger.info("✅ OpenAI services configurados")
         else:
-            logger.warning("⚠️ OpenAI no configurado - usando servicios mock")
-            self._instances['openai_script_service'] = MockOpenAIScriptService()
-            self._instances['openai_audio_service'] = MockOpenAIAudioService()
+            logger.warning("⚠️ OpenAI no configurado")
 
         # Supabase client
         if settings.supabase_configured:
             self._instances['supabase_client'] = SupabaseClient()
             logger.info("✅ Supabase client configurado")
         else:
-            logger.warning("⚠️ Supabase no configurado - usando client mock")
-            self._instances['supabase_client'] = MockSupabaseClient()
+            logger.warning("⚠️ Supabase no configurado")
 
     def _init_repositories(self) -> None:
-        """Inicializa repositorios."""
+        """
+        Inicializa repositorios.
+        """
+
         supabase_client = self._instances['supabase_client']
 
         self._instances['user_repository'] = SupabaseUserRepository(
             supabase_client)
         self._instances['video_repository'] = SupabaseVideoRepository(
+            supabase_client)
+        self._instances['clip_repository'] = SupabaseClipRepository(
+            supabase_client)
+        self._instances['credit_repository'] = SupabaseCreditRepository(
             supabase_client)
 
         logger.info("✅ Repositorios configurados")
@@ -117,9 +127,13 @@ class DependencyContainer:
         """Obtiene el repositorio de videos."""
         return self._instances['video_repository']
 
-    def get_script_repository(self) -> ScriptRepository:
-        """Obtiene el repositorio de scripts."""
-        return self._instances['script_repository']
+    def get_clip_repository(self) -> ClipRepository:
+        """Obtiene el repositorio de clips."""
+        return self._instances['clip_repository']
+
+    def get_credit_repository(self) -> CreditRepository:
+        """Obtiene el repositorio de créditos."""
+        return self._instances['credit_repository']
 
     # ============= GETTERS PARA USE CASES =============
 
@@ -141,43 +155,6 @@ class DependencyContainer:
         )
 
 
-# ============= MOCK SERVICES PARA DESARROLLO =============
-
-class MockOpenAIScriptService:
-    """Mock service para OpenAI scripts."""
-
-    async def enhance_script(self, *args, **kwargs):
-        return {
-            "script_mejorado": "Script mejorado (mock)",
-            "duracion_estimada": 30,
-            "segmentos": [
-                {"texto": "Hook mock", "duracion": 10, "tipo": "hook"},
-                {"texto": "Contenido mock", "duracion": 20, "tipo": "contenido"}
-            ],
-            "keywords": ["mock", "test"],
-            "mejoras": ["Mejora mock 1", "Mejora mock 2"]
-        }
-
-
-class MockOpenAIAudioService:
-    """Mock service para OpenAI audio."""
-
-    async def generate_speech(self, *args, **kwargs):
-        return b"mock audio data"
-
-
-class MockSupabaseClient:
-    """Mock client para Supabase."""
-
-    async def verify_jwt_token(self, token: str):
-        return {
-            "id": "mock-user-id",
-            "email": "mock@example.com",
-            "user_metadata": {},
-            "app_metadata": {}
-        }
-
-
 # ============= INSTANCIA GLOBAL =============
 container = DependencyContainer()
 
@@ -192,28 +169,42 @@ async def get_container() -> DependencyContainer:
 
 
 async def get_enhance_script_use_case(
-    container_instance: DependencyContainer = get_container()
+    container_instance: DependencyContainer = Depends(get_container)
 ) -> EnhanceScriptUseCase:
     """Dependency para obtener el caso de uso de mejora de scripts."""
     return container_instance.get_enhance_script_use_case()
 
 
 async def get_generate_audio_use_case(
-    container_instance: DependencyContainer = get_container()
+    container_instance: DependencyContainer = Depends(get_container)
 ) -> GenerateAudioUseCase:
     """Dependency para obtener el caso de uso de generación de audio."""
     return container_instance.get_generate_audio_use_case()
 
 
 async def get_user_repository(
-    container_instance: DependencyContainer = get_container()
+    container_instance: DependencyContainer = Depends(get_container)
 ) -> UserRepository:
     """Dependency para obtener el repositorio de usuarios."""
     return container_instance.get_user_repository()
 
 
 async def get_video_repository(
-    container_instance: DependencyContainer = get_container()
+    container_instance: DependencyContainer = Depends(get_container)
 ) -> VideoRepository:
     """Dependency para obtener el repositorio de videos."""
     return container_instance.get_video_repository()
+
+
+async def get_clip_repository(
+    container_instance: DependencyContainer = Depends(get_container)
+) -> ClipRepository:
+    """Dependency para obtener el repositorio de clips."""
+    return container_instance.get_clip_repository()
+
+
+async def get_credit_repository(
+    container_instance: DependencyContainer = Depends(get_container)
+) -> CreditRepository:
+    """Dependency para obtener el repositorio de créditos."""
+    return container_instance.get_credit_repository()

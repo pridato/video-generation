@@ -1,3 +1,4 @@
+from attrs import asdict
 from app.domain.entities.clip import AssetClip, VideoClip
 from app.domain.repositories.clip_repository import ClipRepository
 from app.infrastructure.external.supabase.client import SupabaseClient
@@ -14,6 +15,114 @@ logger = logging.getLogger(__name__)
 class SupabaseClipRepository(ClipRepository):
     def __init__(self, supabase_client: SupabaseClient):
         self.client = supabase_client.client
+
+    # ============= OPERACIONES CRUD =============
+
+    async def create(self, entity: AssetClip) -> AssetClip:
+        """
+        Crea un nuevo clip de activo en la base de datos.
+
+        Args:
+            entity (AssetClip): El clip de activo a crear.
+
+        Returns:
+            AssetClip: El clip de activo creado con ID asignado.
+
+        Example:
+            clip = AssetClip(
+                id=None,
+                filename="education/coding_tutorial_5s.mp4",
+                file_url="https://example.com/storage/education/coding_tutorial_5s.mp4",
+                duration=5,
+                concept_tags=["coding", "tutorial", "screen"],
+                emotion_tags=["professional", "focused"],
+                quality_score=8.5,
+                usage_count=0,
+                success_rate=0.0,
+                avg_relevance_score=0.0,
+                is_active=True,
+                processing_status="ready",
+                created_at=None,
+                updated_at=None,
+                embedding=[0.1, 0.2, ..., 0.768]
+            )
+            created_clip = await repository.create(clip)
+            print(created_clip.id)  # UUID generado
+        """
+        try:
+            clip_data = asdict(entity)
+            # Convertir listas a formatos compatibles con Postgres
+            clip_data['concept_tags'] = "{" + \
+                ",".join(clip_data.get('concept_tags', [])) + "}"
+            clip_data['emotion_tags'] = "{" + \
+                ",".join(clip_data.get('emotion_tags', [])) + "}"
+
+            result = self.client.table(
+                "asset_clips").insert(clip_data).execute()
+            # Ensure result.data[0] is a dict, not a model instance
+            return AssetClipModel(dict(result.data[0])).to_entity()
+
+        except Exception as e:
+            logger.error(f"Error creando asset clip: {str(e)}")
+            raise
+
+    async def get_by_id(self, id: str) -> Optional[AssetClip]:
+        """
+        Obtiene un clip de activo por su ID.
+
+        Args:
+            id (str): ID del clip de activo a obtener.
+
+        Returns:
+            Optional[AssetClip]: El clip de activo si se encuentra, None en caso contrario.
+
+        Example:
+            clip = await repository.get_by_id("some-clip-id")
+        """
+        try:
+            result = self.client.table("asset_clips").select(
+                "*").eq("id", id).single().execute()
+
+            if not result.data:
+                return None
+
+            return AssetClipModel(result.data).to_entity()
+
+        except Exception as e:
+            logger.error(f"Error obteniendo asset clip por ID: {str(e)}")
+            return None
+
+    async def update(self, entity: AssetClip) -> AssetClip:
+        """
+        Actualiza un clip de activo en la base de datos.
+
+        Args:
+            entity (AssetClip): El clip de activo a actualizar.
+
+        Returns:
+            AssetClip: El clip de activo actualizado.
+
+        Example:
+            clip = await repository.get_by_id("some-clip-id")
+            clip.quality_score = 9.0
+            updated_clip = await repository.update(clip)
+        """
+        try:
+            clip_data = asdict(entity)
+            # Convertir listas a formatos compatibles con Postgres
+            clip_data['concept_tags'] = "{" + \
+                ",".join(clip_data.get('concept_tags', [])) + "}"
+            clip_data['emotion_tags'] = "{" + \
+                ",".join(clip_data.get('emotion_tags', [])) + "}"
+            result = self.client.table(
+                "asset_clips").update(clip_data).eq("id", entity.id).execute()
+            return AssetClipModel(dict(result.data[0])).to_entity()
+
+        except Exception as e:
+            logger.error(f"Error actualizando asset clip: {str(e)}")
+            raise
+
+    # ============= CONSULTAS ESPECÍFICAS =============
 
     async def search_by_embedding(self, embedding: List[float], limit: int = 20, target_duration: Optional[int] = None,
                                   emotion_filter: Optional[str] = None) -> List[AssetClip]:

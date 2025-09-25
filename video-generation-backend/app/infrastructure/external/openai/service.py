@@ -216,6 +216,15 @@ Responde ÚNICAMENTE con un JSON array de strings: ["keyword1", "keyword2", ...]
         word_counts = Counter(filtered_words)
         return [word for word, _ in word_counts.most_common(max_keywords)]
 
+    async def generate_embedding(self, text: str) -> List[float]:
+        try:
+            # TODO implement actual embedding generation
+            return [0.0]
+
+        except Exception as e:
+            logger.error(f"Error generando embedding: {str(e)}")
+            raise
+
 
 class OpenAIAudioService(AudioService):
     """Servicio para generación de audio usando OpenAI."""

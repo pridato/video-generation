@@ -3,6 +3,7 @@ AI Service Interface
 """
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List
+from app.domain.entities.script import Script
 
 
 class AIService(ABC):
@@ -18,13 +19,17 @@ class AIService(ABC):
     @abstractmethod
     async def enhance_script(
         self,
-        original_text: str,
-        target_duration: int,
-        tone: str,
-        category: str,
-        target_audience: str
+        script: Script
     ) -> Dict[str, Any]:
-        """Mejora un script usando IA."""
+        """
+        Mejora un script usando IA.
+
+        Args:
+            script (Script): El script a mejorar.
+
+        Returns:
+            Dict[str, Any]: El script mejorado.
+        """
         pass
 
     @abstractmethod

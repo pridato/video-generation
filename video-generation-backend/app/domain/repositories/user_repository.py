@@ -36,19 +36,6 @@ class UserRepository(BaseRepository[User]):
         pass
 
     @abstractmethod
-    async def get_by_id(self, id: str) -> Optional[User]:
-        """
-        Obtiene un usuario por ID de Supabase.
-
-        Args:
-            id (str): ID del usuario.
-
-        Returns:
-            Optional[User]: Usuario encontrado o None si no existe.
-        """
-        pass
-
-    @abstractmethod
     async def get_by_stripe_customer_id(self, stripe_customer_id: str) -> Optional[User]:
         """
         Obtiene un usuario por ID de cliente de Stripe.

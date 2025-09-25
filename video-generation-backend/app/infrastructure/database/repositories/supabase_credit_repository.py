@@ -23,6 +23,22 @@ class SupabaseCreditRepository(CreditRepository):
     def __init__(self, supabase_client: SupabaseClient):
         self.client = supabase_client.client
 
+    # ============= OPERACIONES CRUD =============
+
+    async def create(self, entity: Any) -> Any:
+        raise NotImplementedError("Método no implementado")
+
+    async def get_by_id(self, entity_id: Any) -> Any:
+        raise NotImplementedError("Método no implementado")
+
+    async def update(self, entity: Any) -> Any:
+        raise NotImplementedError("Método no implementado")
+
+    async def delete(self, entity_id: Any) -> None:
+        raise NotImplementedError("Método no implementado")
+
+    # ============= CONSULTAS ESPECÍFICAS =============
+
     async def consume_credits(
         self,
         user_id: str,
