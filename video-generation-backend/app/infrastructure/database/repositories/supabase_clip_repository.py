@@ -122,6 +122,8 @@ class SupabaseClipRepository(ClipRepository):
             logger.error(f"Error actualizando asset clip: {str(e)}")
             raise
 
+    async def delete(self, id: str) -> bool:
+        raise NotImplementedError("Método no implementado")
     # ============= CONSULTAS ESPECÍFICAS =============
 
     async def search_by_embedding(self, embedding: List[float], limit: int = 20, target_duration: Optional[int] = None,

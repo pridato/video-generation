@@ -14,7 +14,7 @@ Dependency Injection Container
 - Mejorada gestión de errores
 """
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from .config import settings
 from .database import get_db
@@ -48,163 +48,134 @@ class DependencyContainer:
     def __init__(self):
         self._instances: Dict[str, Any] = {}
         self._initialized = False
+        self._initialization_errors: Dict[str, str] = {}
 
     def initialize(self) -> None:
-        """Inicializa todas las dependencias."""
+        """
+        Inicializa todas las dependencias con validación estricta.
+
+        Raises:
+            RuntimeError: Si servicios críticos no se pueden inicializar
+        """
         if self._initialized:
             return
 
-        logger.info("🚀 Inicializando dependency container...")
+        logger.info("🚀 Inicializando production dependency container...")
 
-        # 1. Servicios externos (OpenAI, Supabase)
-        self._init_external_services()
+        try:
+            # 1. Validar configuración crítica
+            self._validate_configuration()
 
-        # 2. Repositorios
-        self._init_repositories()
+            # 2. Inicializar servicios externos
+            self._init_external_services()
 
-        self._initialized = True
-        logger.info("✅ Dependency container inicializado exitosamente")
+            # 3. Inicializar repositorios
+            self._init_repositories()
+
+            # 4. Verificar salud de servicios
+            self._verify_services_health()
+
+            self._initialized = True
+            logger.info("✅ Production container inicializado exitosamente")
+
+        except Exception as e:
+            logger.error(f"❌ Error crítico inicializando container: {str(e)}")
+            self._log_initialization_summary()
+            raise RuntimeError(
+                f"Falló inicialización del container: {str(e)}") from e
+
+    def _validate_configuration(self) -> None:
+        """Valida que la configuración esencial esté presente."""
+        logger.info("🔍 Validando configuración...")
+
+        required_configs = []
+
+        # Validar OpenAI
+        if not settings.OPENAI_API_KEY:
+            required_configs.append("OPENAI_API_KEY")
+
+        # Validar Supabase
+        if not settings.SUPABASE_URL:
+            required_configs.append("SUPABASE_URL")
+        if not settings.SUPABASE_SERVICE_ROLE_KEY:
+            required_configs.append("SUPABASE_SERVICE_ROLE_KEY")
+
+        if required_configs:
+            missing = ", ".join(required_configs)
+            raise RuntimeError(f"Configuración crítica faltante: {missing}")
+
+        logger.info("✅ Configuración validada correctamente")
 
     def _init_external_services(self) -> None:
-        """
-        Inicializa servicios externos como OpenAI y Supabase.
-        """
+        """Inicializa servicios externos con validación estricta."""
+        logger.info("🔌 Inicializando servicios externos...")
 
-        # OpenAI services
-        if settings.openai_configured:
+        # OpenAI Services
+        try:
+            if not settings.openai_configured:
+                raise ValueError("OpenAI no está configurado correctamente")
+
             self._instances['openai_script_service'] = OpenAIScriptService()
             self._instances['openai_audio_service'] = OpenAIAudioService()
-            logger.info("✅ OpenAI services configurados")
-        else:
-            logger.warning("⚠️ OpenAI no configurado")
+            logger.info("✅ OpenAI services inicializados")
 
-        # Supabase client
-        if settings.supabase_configured:
+        except Exception as e:
+            error_msg = f"Error inicializando OpenAI services: {str(e)}"
+            self._initialization_errors['openai'] = error_msg
+            logger.error(f"❌ {error_msg}")
+            raise
+
+        # Supabase Client
+        try:
+            if not settings.supabase_configured:
+                raise ValueError("Supabase no está configurado correctamente")
+
             self._instances['supabase_client'] = SupabaseClient()
-            logger.info("✅ Supabase client configurado")
-        else:
-            logger.warning("⚠️ Supabase no configurado")
+            logger.info("✅ Supabase client inicializado")
+
+        except Exception as e:
+            error_msg = f"Error inicializando Supabase client: {str(e)}"
+            self._initialization_errors['supabase'] = error_msg
+            logger.error(f"❌ {error_msg}")
+            raise
 
     def _init_repositories(self) -> None:
-        """
-        Inicializa repositorios.
-        """
+        """Inicializa todos los repositorios."""
+        logger.info("🗄️ Inicializando repositorios...")
 
         supabase_client = self._instances['supabase_client']
 
-        self._instances['user_repository'] = SupabaseUserRepository(
-            supabase_client)
-        self._instances['video_repository'] = SupabaseVideoRepository(
-            supabase_client)
-        self._instances['clip_repository'] = SupabaseClipRepository(
-            supabase_client)
-        self._instances['credit_repository'] = SupabaseCreditRepository(
-            supabase_client)
+        try:
+            # Repositorios persistentes (Supabase)
+            self._instances['user_repository'] = SupabaseUserRepository(
+                supabase_client)
+            logger.info("✅ User repository inicializado")
 
-        logger.info("✅ Repositorios configurados")
+            self._instances['video_repository'] = SupabaseVideoRepository(
+                supabase_client)
+            logger.info("✅ Video repository inicializado")
 
-    # ============= GETTERS PARA SERVICIOS =============
+            self._instances['clip_repository'] = SupabaseClipRepository(
+                supabase_client)
+            logger.info("✅ Clip repository inicializado")
 
-    def get_openai_script_service(self):
-        """Obtiene el servicio de OpenAI para scripts."""
-        return self._instances['openai_script_service']
+            # Credit repository (opcional)
+            try:
+                self._instances['credit_repository'] = SupabaseCreditRepository(
+                    supabase_client)
+                logger.info("✅ Credit repository inicializado")
+            except Exception as e:
+                logger.warning(f"⚠️ Credit repository no disponible: {str(e)}")
+                self._instances['credit_repository'] = None
 
-    def get_openai_audio_service(self):
-        """Obtiene el servicio de OpenAI para audio."""
-        return self._instances['openai_audio_service']
+            # Script repository (en memoria - no persistente)
+            self._instances['script_repository'] = InMemoryScriptRepository()
+            logger.info("✅ Script repository (memoria) inicializado")
 
-    def get_supabase_client(self):
-        """Obtiene el cliente de Supabase."""
-        return self._instances['supabase_client']
+            logger.info("✅ Todos los repositorios inicializados")
 
-    # ============= GETTERS PARA REPOSITORIOS =============
-
-    def get_user_repository(self) -> UserRepository:
-        """Obtiene el repositorio de usuarios."""
-        return self._instances['user_repository']
-
-    def get_video_repository(self) -> VideoRepository:
-        """Obtiene el repositorio de videos."""
-        return self._instances['video_repository']
-
-    def get_clip_repository(self) -> ClipRepository:
-        """Obtiene el repositorio de clips."""
-        return self._instances['clip_repository']
-
-    def get_credit_repository(self) -> CreditRepository:
-        """Obtiene el repositorio de créditos."""
-        return self._instances['credit_repository']
-
-    # ============= GETTERS PARA USE CASES =============
-
-    def get_enhance_script_use_case(self) -> EnhanceScriptUseCase:
-        """Obtiene el caso de uso para mejorar scripts."""
-        return EnhanceScriptUseCase(
-            script_repository=self.get_script_repository(),
-            user_repository=self.get_user_repository(),
-            ai_service=self.get_openai_script_service()
-        )
-
-    def get_generate_audio_use_case(self) -> GenerateAudioUseCase:
-        """Obtiene el caso de uso para generar audio."""
-        return GenerateAudioUseCase(
-            script_repository=self.get_script_repository(),
-            user_repository=self.get_user_repository(),
-            audio_service=self.get_openai_audio_service(),
-            storage_service=self.get_supabase_client()
-        )
-
-
-# ============= INSTANCIA GLOBAL =============
-container = DependencyContainer()
-
-
-# ============= DEPENDENCY FUNCTIONS PARA FASTAPI =============
-
-async def get_container() -> DependencyContainer:
-    """Dependency para obtener el container."""
-    if not container._initialized:
-        container.initialize()
-    return container
-
-
-async def get_enhance_script_use_case(
-    container_instance: DependencyContainer = Depends(get_container)
-) -> EnhanceScriptUseCase:
-    """Dependency para obtener el caso de uso de mejora de scripts."""
-    return container_instance.get_enhance_script_use_case()
-
-
-async def get_generate_audio_use_case(
-    container_instance: DependencyContainer = Depends(get_container)
-) -> GenerateAudioUseCase:
-    """Dependency para obtener el caso de uso de generación de audio."""
-    return container_instance.get_generate_audio_use_case()
-
-
-async def get_user_repository(
-    container_instance: DependencyContainer = Depends(get_container)
-) -> UserRepository:
-    """Dependency para obtener el repositorio de usuarios."""
-    return container_instance.get_user_repository()
-
-
-async def get_video_repository(
-    container_instance: DependencyContainer = Depends(get_container)
-) -> VideoRepository:
-    """Dependency para obtener el repositorio de videos."""
-    return container_instance.get_video_repository()
-
-
-async def get_clip_repository(
-    container_instance: DependencyContainer = Depends(get_container)
-) -> ClipRepository:
-    """Dependency para obtener el repositorio de clips."""
-    return container_instance.get_clip_repository()
-
-
-async def get_credit_repository(
-    container_instance: DependencyContainer = Depends(get_container)
-) -> CreditRepository:
-    """Dependency para obtener el repositorio de créditos."""
-    return container_instance.get_credit_repository()
+        except Exception as e:
+            error_msg = f"Error inicializando repositorios: {str(e)}"
+            self._initialization_errors['repositories'] = error_msg
+            logger.error(f"❌ {error_msg}")
+            raise

@@ -16,6 +16,9 @@ class SupabaseUserRepository(UserRepository):
 
     # ============= OPERACIONES CRUD =============
 
+    async def create(self, entity: User) -> User:
+        raise NotImplementedError("Método no implementado")
+
     async def get_by_id(self, id: str) -> Optional[User]:
         """
         Obtiene un usuario por su ID.
@@ -35,6 +38,12 @@ class SupabaseUserRepository(UserRepository):
         except Exception as e:
             logger.error(f"Error obteniendo usuario: {str(e)}")
             return None
+
+    async def update(self, entity: User) -> User:
+        raise NotImplementedError("Método no implementado")
+
+    async def delete(self, id: str) -> bool:
+        raise NotImplementedError("Método no implementado")
 
     # ============= CONSULTAS ESPECÍFICAS =============
 

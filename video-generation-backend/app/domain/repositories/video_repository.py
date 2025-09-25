@@ -17,32 +17,6 @@ class VideoRepository(BaseRepository[Video]):
         return Video
 
     @abstractmethod
-    async def create_video(self, entity: Video) -> Video:
-        """
-        Crea un nuevo video en la ddbb.
-
-        Args:
-            entity (Video): La entidad de video a crear.
-
-        Returns:
-            Video: La entidad de video creada con ID asignado.
-        """
-        pass
-
-    @abstractmethod
-    async def get_by_id(self, id: str) -> Optional[Video]:
-        """
-        Obtiene un video por su ID.
-
-        Args:
-            id (str): El ID del video.
-
-        Returns:
-            Optional[Video]: La entidad de video si se encuentra, de lo contrario None.
-        """
-        pass
-
-    @abstractmethod
     async def get_by_user_id(self, user_id: str, limit: int = 10, offset: int = 0) -> List[Video]:
         """
         Obtiene videos por ID de usuario.

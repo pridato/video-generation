@@ -19,7 +19,9 @@ class SupabaseVideoRepository(VideoRepository):
     def __init__(self, supabase_client: SupabaseClient):
         self.client = supabase_client.client
 
-    async def create_video(self, entity: Video) -> Video:
+    # ============= OPERACIONES CRUD =============
+
+    async def create(self, entity: Video) -> Video:
         try:
 
             # Convertir entidad a datos para DB
@@ -94,6 +96,14 @@ class SupabaseVideoRepository(VideoRepository):
         except Exception as e:
             logger.error(f"Error obteniendo video por ID {id}: {str(e)}")
             return None
+
+    async def update(self, entity: Video) -> Video:
+        raise NotImplementedError("Método no implementado")
+
+    async def delete(self, id: str) -> bool:
+        raise NotImplementedError("Método no implementado")
+
+    # ============= CONSULTAS ESPECÍFICAS =============
 
     async def get_by_user_id(self, user_id: str, limit: int = 10, offset: int = 0) -> List[Video]:
         try:

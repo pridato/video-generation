@@ -60,6 +60,8 @@ class Settings(BaseSettings):
         default="", description="Supabase anonymous key")
     SUPABASE_JWT_SECRET: str = Field(
         default="", description="Supabase JWT secret")
+    SUPABASE_SERVICE_ROLE_KEY: str = Field(
+        default="", description="Supabase service role key")
 
     # ============= SCRIPT CONFIGURATION =============
     MAX_SCRIPT_LENGTH: int = Field(
