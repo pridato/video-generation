@@ -13,86 +13,127 @@ class VideoRepository(BaseRepository[Video]):
     """Interfaz del repositorio para videos."""
 
     @abstractmethod
+    async def create_video(self, entity: Video) -> Video:
+        """
+        Crea un nuevo video en la ddbb.
+
+        Args:
+            entity (Video): La entidad de video a crear.
+
+        Returns:
+            Video: La entidad de video creada con ID asignado.
+        """
+        pass
+
+    @abstractmethod
+    async def get_by_id(self, id: str) -> Optional[Video]:
+        """
+        Obtiene un video por su ID.
+
+        Args:
+            id (str): El ID del video.
+
+        Returns:
+            Optional[Video]: La entidad de video si se encuentra, de lo contrario None.
+        """
+        pass
+
+    @abstractmethod
     async def get_by_user_id(self, user_id: str, limit: int = 10, offset: int = 0) -> List[Video]:
-        """Obtiene videos por ID de usuario."""
+        """
+        Obtiene videos por ID de usuario.
+
+        Args:
+            user_id (str): El ID del usuario.
+            limit (int): Número máximo de videos a retornar. 10 por defecto.
+            offset (int): Número de videos a omitir. 0 por defecto.
+
+        Returns:
+            List[Video]: Lista de videos del usuario.
+        """
         pass
 
     @abstractmethod
-    async def get_by_script_id(self, script_id: str) -> List[Video]:
-        """Obtiene videos asociados a un script."""
+    async def update_state(self, video_id: str, state: VideoStatus, error_message: Optional[str] = None) -> bool:
+        """
+        Actualiza el estado de un video.
+
+        Args:
+            video_id (str): El ID del video a actualizar.
+            state (VideoStatus): El nuevo estado del video.
+            error_message (Optional[str]): Mensaje de error si aplica.
+
+        Returns:
+            bool: True si la actualización fue exitosa, False en caso contrario.
+        """
         pass
 
     @abstractmethod
-    async def get_by_estado(self, estado: VideoStatus, limit: int = 100) -> List[Video]:
-        """Obtiene videos por estado."""
-        pass
+    async def set_video_url(self, video_id: str, url: str, duration: float) -> bool:
+        """
+        Establece la URL del video finalizado.
 
-    @abstractmethod
-    async def get_pending_videos(self, limit: int = 50) -> List[Video]:
-        """Obtiene videos pendientes de procesamiento."""
-        pass
+        Args:
+            video_id (str): El ID del video a actualizar.
+            url (str): La URL del video final.
+            duration (float): La duración final del video.
 
-    @abstractmethod
-    async def get_processing_videos(self) -> List[Video]:
-        """Obtiene videos que están siendo procesados."""
-        pass
-
-    @abstractmethod
-    async def get_failed_videos(self, limit: int = 100) -> List[Video]:
-        """Obtiene videos que han fallado."""
-        pass
-
-    @abstractmethod
-    async def update_estado(self, video_id: str, estado: VideoStatus, error_mensaje: Optional[str] = None) -> bool:
-        """Actualiza el estado de un video."""
-        pass
-
-    @abstractmethod
-    async def update_progreso(self, video_id: str, progreso: dict) -> bool:
-        """Actualiza el progreso de procesamiento de un video."""
-        pass
-
-    @abstractmethod
-    async def set_video_url(self, video_id: str, url: str, duracion: float) -> bool:
-        """Establece la URL del video finalizado."""
-        pass
-
-    @abstractmethod
-    async def get_recent_by_user(self, user_id: str, days: int = 30) -> List[Video]:
-        """Obtiene videos recientes de un usuario."""
-        pass
-
-    @abstractmethod
-    async def get_completed_videos(self, user_id: Optional[str] = None, limit: int = 10) -> List[Video]:
-        """Obtiene videos completados."""
+        Returns:
+            bool: True si la actualización fue exitosa, False en caso contrario.
+        """
         pass
 
     @abstractmethod
     async def search_by_title(self, query: str, user_id: Optional[str] = None) -> List[Video]:
-        """Busca videos por título."""
-        pass
+        """
+        Busca videos por título.
 
-    @abstractmethod
-    async def get_videos_by_template(self, template_id: str, limit: int = 10) -> List[Video]:
-        """Obtiene videos que usan un template específico."""
+        Args:
+            query (str): El término de búsqueda en el título.
+            user_id (Optional[str]): Filtra por ID de usuario si se proporciona.
+
+        Returns:
+            List[Video]: Lista de videos que coinciden con el término de búsqueda.
+        """
         pass
 
     @abstractmethod
     async def get_user_video_stats(self, user_id: str) -> dict:
-        """Obtiene estadísticas de videos de un usuario."""
+        """
+        Obtiene estadísticas de videos de un usuario.
+
+        Args:
+            user_id (str): El ID del usuario.
+
+        Returns:
+            dict: Estadísticas del usuario, incluyendo conteo por estado y total de videos.
+        """
         pass
 
     @abstractmethod
     async def count_by_user_and_month(self, user_id: str, year: int, month: int) -> int:
-        """Cuenta videos generados por un usuario en un mes específico."""
+        """
+        Cuenta videos generados por un usuario en un mes específico.
+
+        Args:
+            user_id (str): El ID del usuario.
+            year (int): El año.
+            month (int): El mes.
+
+        Returns:
+            int: Número de videos generados por el usuario en el mes especificado.
+        """
         pass
 
     @abstractmethod
     async def get_processing_time_stats(self, days: int = 30) -> dict:
-        """Obtiene estadísticas de tiempo de procesamiento."""
-        pass
+        """
+        Obtiene estadísticas de tiempo de procesamiento.
 
-    @abstractmethod
-    async def cleanup_old_failed_videos(self, days_old: int = 7) -> int:
-        """Limpia videos fallidos antiguos."""
+        Args:
+            days (int): Número de días hacia atrás para calcular las estadísticas. 30 por defecto.
+
+        Returns:
+            dict: Estadísticas de tiempo de procesamiento, incluyendo tiempo promedio, mínimo y máximo.
+        """
         pass
