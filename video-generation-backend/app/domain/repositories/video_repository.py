@@ -18,52 +18,6 @@ class VideoRepository(BaseRepository[Video]):
     def _model(self) -> type:
         return Video
 
-    # ============= OPERACIONES CRUD BÁSICAS =============
-
-    @abstractmethod
-    async def create_video(self, video: Video) -> Video:
-        """
-        Crea un nuevo video en la base de datos.
-
-        Args:
-            video (Video): Entidad Video a crear
-
-        Returns:
-            Video creado con ID asignado
-
-        Example:
-            new_video = Video(
-                user_id="user123",
-                script_original="Este es el guion del video...",
-                title="Mi primer video",
-                target_duration=120,
-                tone=VideoTone.CASUAL,
-                category=VideoCategory.TECH,
-                voice_id=VoiceId.NOVA
-            )
-            created_video = await video_repository.create_video(new_video)
-            print(f"Video creado con ID: {created_video.id}")
-        """
-        pass
-
-    @abstractmethod
-    async def update_video(self, video: Video) -> Video:
-        """
-        Actualiza un video existente.
-
-        Args:
-            video (Video): Video con cambios a persistir
-
-        Returns:
-            Video actualizado
-
-        Example:
-            video = await video_repository.get_by_id("video123")
-            video.title = "Nuevo título del video"
-            updated_video = await video_repository.update_video(video)
-        """
-        pass
-
     # ============= CONSULTAS POR USUARIO =============
 
     @abstractmethod
