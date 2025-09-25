@@ -1,10 +1,11 @@
-from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
-from typing import Generator
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import declarative_base
+from typing import AsyncGenerator
 import logging
 
-from .config import settings
+from app.core.config import settings
+
 
 logger = logging.getLogger(__name__)
 
@@ -17,35 +18,59 @@ class DatabaseManager:
         self.SessionLocal = None
         self.Base = declarative_base()
 
-    def initialize(self, database_url: str = None):
-        """Inicializa la conexión a la base de datos."""
-        if not database_url:
-            # Para desarrollo local con SQLite
-            database_url = "sqlite:///./video_generation.db"
+    def initialize(self, database_url: str = ""):
+        """
+        Inicializa la conexión a la base de datos.
 
-        self.engine = create_engine(
+        Args: 
+            database_url (str): URL de la base de datos. Si no se proporciona, se usa la configuración por defecto.
+        """
+
+        database_url = database_url or settings.DATABASE_URL
+
+        self.engine = create_async_engine(
             database_url,
-            connect_args={"check_same_thread": False} if "sqlite" in database_url else {}
+            echo=settings.DEBUG,
+            pool_size=10,
+            max_overflow=20
         )
 
-        self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
+        self.AsyncSessionLocal = async_sessionmaker(
+            self.engine,
+            class_=AsyncSession,
+            expire_on_commit=False
+        )
+
         logger.info(f"Database initialized with URL: {database_url}")
 
-    def create_tables(self):
-        """Crea las tablas en la base de datos."""
-        self.Base.metadata.create_all(bind=self.engine)
+    async def create_tables(self):
+        """
+        Crea las tablas en la base de datos.
+
+        Raises:
+            RuntimeError: Si la base de datos no ha sido inicializada.
+        """
+        if self.engine is None:
+            raise RuntimeError(
+                "Database not initialized. Call initialize() first.")
+
+        async with self.engine.begin() as conn:
+            await conn.run_sync(self.Base.metadata.create_all)
+
         logger.info("Database tables created")
 
-    def get_session(self) -> Generator[Session, None, None]:
-        """Obtiene una sesión de base de datos."""
-        if not self.SessionLocal:
-            raise RuntimeError("Database not initialized. Call initialize() first.")
+    async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
+        """
+        Obtiene una sesión de base de datos.
 
-        db = self.SessionLocal()
-        try:
-            yield db
-        finally:
-            db.close()
+        Yields:
+            AsyncGenerator[AsyncSession, None]: Generador asíncrono de sesiones de base de datos.
+        """
+        async with self.AsyncSessionLocal() as session:
+            try:
+                yield session
+            finally:
+                await session.close()
 
 
 # Instancia global del manejador de base de datos
@@ -55,6 +80,12 @@ db_manager = DatabaseManager()
 Base = db_manager.Base
 
 
-def get_db() -> Generator[Session, None, None]:
-    """Dependency para obtener una sesión de base de datos."""
-    yield from db_manager.get_session()
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Generador de dependencias para obtener una sesión de base de datos.
+
+    Yields:
+        AsyncGenerator[AsyncSession, None]: Generador asíncrono de sesiones de base de datos.
+    """
+    async for session in db_manager.get_session():
+        yield session
