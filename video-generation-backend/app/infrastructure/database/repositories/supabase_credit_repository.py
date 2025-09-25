@@ -4,7 +4,7 @@ Implementación del repositorio de créditos usando Supabase.
 
 import logging
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime
 from decimal import Decimal
 
 from app.domain.repositories.credit_repository import CreditRepository
