@@ -1,117 +1,422 @@
 """
-Video repository interface
+Video Repository Interface - Definición de la interfaz para operaciones CRUD y consultas específicas de videos.
+
 """
+
 from abc import abstractmethod
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 from .base import BaseRepository
-from ..entities.video import Video, VideoStatus
+from ..entities.video import Video, VideoStatus, VideoCategory, VideoTone
 
 
 class VideoRepository(BaseRepository[Video]):
-    """Interfaz del repositorio para videos."""
+    """Interfaz del repositorio para videos con scripts embedded."""
 
     @property
     def _model(self) -> type:
         return Video
 
+    # ============= OPERACIONES CRUD BÁSICAS =============
+
     @abstractmethod
-    async def get_by_user_id(self, user_id: str, limit: int = 10, offset: int = 0) -> List[Video]:
+    async def create_video(self, video: Video) -> Video:
         """
-        Obtiene videos por ID de usuario.
+        Crea un nuevo video en la base de datos.
 
         Args:
-            user_id (str): El ID del usuario.
-            limit (int): Número máximo de videos a retornar. 10 por defecto.
-            offset (int): Número de videos a omitir. 0 por defecto.
+            video (Video): Entidad Video a crear
 
         Returns:
-            List[Video]: Lista de videos del usuario.
+            Video creado con ID asignado
+
+        Example:
+            new_video = Video(
+                user_id="user123",
+                script_original="Este es el guion del video...",
+                title="Mi primer video",
+                target_duration=120,
+                tone=VideoTone.CASUAL,
+                category=VideoCategory.TECH,
+                voice_id=VoiceId.NOVA
+            )
+            created_video = await video_repository.create_video(new_video)
+            print(f"Video creado con ID: {created_video.id}")
         """
         pass
 
     @abstractmethod
-    async def update_state(self, video_id: str, state: VideoStatus, error_message: Optional[str] = None) -> bool:
+    async def update_video(self, video: Video) -> Video:
+        """
+        Actualiza un video existente.
+
+        Args:
+            video (Video): Video con cambios a persistir
+
+        Returns:
+            Video actualizado
+
+        Example:
+            video = await video_repository.get_by_id("video123")
+            video.title = "Nuevo título del video"
+            updated_video = await video_repository.update_video(video)
+        """
+        pass
+
+    # ============= CONSULTAS POR USUARIO =============
+
+    @abstractmethod
+    async def get_by_user_id(
+        self,
+        user_id: str,
+        limit: int = 20,
+        offset: int = 0,
+        status_filter: Optional[VideoStatus] = None
+    ) -> List[Video]:
+        """
+        Obtiene videos de un usuario con filtros opcionales.
+
+        Args:
+            user_id (str): ID del usuario
+            limit (int): Máximo videos a retornar
+            offset (int): Videos a omitir (paginación)
+            status_filter (Optional[VideoStatus]): Filtrar por estado específico
+
+        Returns:
+            List[Video]: Lista de videos del usuario
+
+        Example:
+            user_videos = await video_repository.get_by_user_id(
+                user_id="user123",
+                limit=10,
+                status_filter=VideoStatus.COMPLETED
+            )
+            for video in user_videos:
+                print(video.title)
+        """
+        pass
+
+    @abstractmethod
+    async def count_by_user(
+        self,
+        user_id: str,
+        status_filter: Optional[VideoStatus] = None,
+        date_from: Optional[datetime] = None
+    ) -> int:
+        """
+        Cuenta videos de un usuario con filtros.
+
+        Args:
+            user_id (str): ID del usuario
+            status_filter (Optional[VideoStatus]): Filtrar por estado
+            date_from (Optional[datetime]): Contar desde fecha específica
+
+        Returns:
+            int: Número total de videos
+
+        Example:
+            total_videos = await video_repository.count_by_user(
+                user_id="user123",
+                status_filter=VideoStatus.FAILED
+            )
+            print(f"Total de videos fallidos: {total_videos}")
+        """
+        pass
+
+    # ============= BÚSQUEDAS Y FILTROS =============
+
+    @abstractmethod
+    async def search_by_script_content(
+        self,
+        query: str,
+        user_id: Optional[str] = None,
+        limit: int = 10
+    ) -> List[Video]:
+        """
+        Busca videos por contenido del script (original o enhanced).
+
+        Args:
+            query (str): Texto a buscar
+            user_id (Optional[str]): Filtrar por usuario específico
+            limit (int): Máximo resultados
+
+        Returns:
+            List[Video]: Videos que coinciden con la búsqueda
+
+        Example:
+            search_results = await video_repository.search_by_script_content(
+                query="tecnología avanzada",
+                user_id="user123",
+                limit=5
+            )
+            for video in search_results:
+                print(video.title)
+        """
+        pass
+
+    @abstractmethod
+    async def get_by_category(
+        self,
+        category: VideoCategory,
+        limit: int = 20,
+        user_id: Optional[str] = None
+    ) -> List[Video]:
+        """
+        Obtiene videos por categoría.
+
+        Args:
+            category (VideoCategory): Categoría a filtrar
+            limit (int): Máximo videos
+            user_id (Optional[str]): Filtrar por usuario específico
+
+        Returns:
+            List[Video]: Videos de la categoría especificada
+
+        Example:
+            tech_videos = await video_repository.get_by_category(
+                category=VideoCategory.TECH,
+                limit=10
+            )
+            for video in tech_videos:
+                print(video.title)
+        """
+        pass
+
+    @abstractmethod
+    async def get_similar_videos(
+        self,
+        embedding: List[float],
+        limit: int = 5,
+        exclude_video_id: Optional[str] = None,
+        user_id: Optional[str] = None
+    ) -> List[Video]:
+        """
+        Encuentra videos similares usando embeddings.
+
+        Args:
+            embedding (List[float]): Vector de embedding para comparar
+            limit (int): Máximo videos similares
+            exclude_video_id (Optional[str]): Excluir video específico (útil para "relacionados")
+            user_id (Optional[str]): Filtrar por usuario específico
+
+        Returns:
+            List[Video]: Videos similares ordenados por similitud
+
+        Example:
+            similar_videos = await video_repository.get_similar_videos(
+                embedding=some_embedding_vector,
+                limit=5,
+                exclude_video_id="video123"
+            )
+            for video in similar_videos:
+                print(video.title)
+        """
+        pass
+
+    # ============= GESTIÓN DE ESTADO =============
+
+    @abstractmethod
+    async def update_status(
+        self,
+        video_id: str,
+        status: VideoStatus,
+        error_message: Optional[str] = None
+    ) -> bool:
         """
         Actualiza el estado de un video.
 
         Args:
-            video_id (str): El ID del video a actualizar.
-            state (VideoStatus): El nuevo estado del video.
-            error_message (Optional[str]): Mensaje de error si aplica.
+            video_id (str): ID del video
+            status (VideoStatus): Nuevo estado
+            error_message (Optional[str]): Mensaje de error si aplica
 
         Returns:
-            bool: True si la actualización fue exitosa, False en caso contrario.
+            True si se actualizó correctamente
+
+        Example:
+            success = await video_repository.update_status(
+                video_id="video123",
+                status=VideoStatus.COMPLETED
+            )
+            if success:
+                print("Estado actualizado exitosamente")
         """
         pass
 
     @abstractmethod
-    async def set_video_url(self, video_id: str, url: str, duration: float) -> bool:
+    async def get_videos_by_status(
+        self,
+        status: VideoStatus,
+        limit: int = 100
+    ) -> List[Video]:
         """
-        Establece la URL del video finalizado.
+        Obtiene videos por estado específico.
+
+        Útil para:
+        - Procesar videos pendientes
+        - Reintentar videos fallidos
+        - Cleanup de videos antiguos
 
         Args:
-            video_id (str): El ID del video a actualizar.
-            url (str): La URL del video final.
-            duration (float): La duración final del video.
+            status (VideoStatus): Estado a filtrar
+            limit (int): Máximo videos
 
         Returns:
-            bool: True si la actualización fue exitosa, False en caso contrario.
+            List[Video]: Videos en el estado especificado
+
+        Example:
+            processing_videos = await video_repository.get_videos_by_status(
+                status=VideoStatus.SELECTING_CLIPS,
+                limit=50
+            )
+            for video in processing_videos:
+                print(video.title)
         """
         pass
 
-    @abstractmethod
-    async def search_by_title(self, query: str, user_id: Optional[str] = None) -> List[Video]:
-        """
-        Busca videos por título.
-
-        Args:
-            query (str): El término de búsqueda en el título.
-            user_id (Optional[str]): Filtra por ID de usuario si se proporciona.
-
-        Returns:
-            List[Video]: Lista de videos que coinciden con el término de búsqueda.
-        """
-        pass
+    # ============= ANALYTICS Y MÉTRICAS =============
 
     @abstractmethod
-    async def get_user_video_stats(self, user_id: str) -> dict:
+    async def get_user_statistics(self, user_id: str) -> Dict[str, Any]:
         """
         Obtiene estadísticas de videos de un usuario.
 
         Args:
-            user_id (str): El ID del usuario.
+            user_id (str): ID del usuario
 
         Returns:
-            dict: Estadísticas del usuario, incluyendo conteo por estado y total de videos.
+            Dict[str, Any]: Diccionario con estadísticas:
+            {
+                "total_videos": int,
+                "completed_videos": int, 
+                "failed_videos": int,
+                "processing_videos": int,
+                "avg_quality_score": float,
+                "total_duration": float,
+                "categories_used": List[str],
+                "most_used_tone": str
+            }
+
+        Example:
+            stats = await video_repository.get_user_statistics("user123")
+            print(f"Total videos: {stats['total_videos']}")
         """
         pass
 
     @abstractmethod
-    async def count_by_user_and_month(self, user_id: str, year: int, month: int) -> int:
+    async def get_trending_videos(
+        self,
+        category: Optional[VideoCategory] = None,
+        days: int = 30,
+        limit: int = 10
+    ) -> List[Video]:
         """
-        Cuenta videos generados por un usuario en un mes específico.
+        Obtiene videos trending/populares.
+
+        Basado en:
+        - Engagement metrics
+        - Quality scores
+        - Fecha de creación
 
         Args:
-            user_id (str): El ID del usuario.
-            year (int): El año.
-            month (int): El mes.
+            category (Optional[VideoCategory]): Filtrar por categoría específica
+            days (int): Considerar videos de últimos X días
+            limit (int): Máximo videos
 
         Returns:
-            int: Número de videos generados por el usuario en el mes especificado.
+            List[Video]: Videos trending ordenados por popularidad
+
+        Example:
+            trending_videos = await video_repository.get_trending_videos(
+                category=VideoCategory.TECH,
+                days=15,
+                limit=5
+            )
+            for video in trending_videos:
+                print(video.title)
+        """
+        pass
+
+    # ============= EMBEDDINGS Y CACHE =============
+
+    @abstractmethod
+    async def update_embedding(self, video_id: str, embedding: List[float]) -> bool:
+        """
+        Actualiza el embedding de un video.
+
+        Args:
+            video_id (str): ID del video
+            embedding (List[float]): Vector de embedding
+
+        Returns:
+            bool: True si se actualizó correctamente
+
+        Example:
+            success = await video_repository.update_embedding(
+                video_id="video123",
+                embedding=new_embedding_vector
+            )
+            if success:
+                print("Embedding actualizado exitosamente")
         """
         pass
 
     @abstractmethod
-    async def get_processing_time_stats(self, days: int = 30) -> dict:
+    async def get_videos_without_embeddings(self, limit: int = 50) -> List[Video]:
         """
-        Obtiene estadísticas de tiempo de procesamiento.
+        Obtiene videos que no tienen embeddings.
+
+        Para procesamiento batch de embeddings.
 
         Args:
-            days (int): Número de días hacia atrás para calcular las estadísticas. 30 por defecto.
+            limit (int): Máximo videos
 
         Returns:
-            dict: Estadísticas de tiempo de procesamiento, incluyendo tiempo promedio, mínimo y máximo.
+            List[Video]: Videos sin embeddings
+
+        Example:
+            videos_no_embedding = await video_repository.get_videos_without_embeddings(limit=20)
+            for video in videos_no_embedding:
+                print(video.title)
+        """
+        pass
+
+    # ============= CLEANUP Y MANTENIMIENTO =============
+
+    @abstractmethod
+    async def cleanup_failed_videos(self, days_old: int = 7) -> int:
+        """
+        Limpia videos fallidos antiguos.
+
+        Args:
+            days_old (int): Videos fallidos más antiguos que X días
+
+        Returns:
+            int: Número de videos eliminados
+
+        Example:
+            deleted_count = await video_repository.cleanup_failed_videos(days_old=30)
+            print(f"Videos fallidos eliminados: {deleted_count}")
+        """
+        pass
+
+    @abstractmethod
+    async def get_processing_health(self) -> Dict[str, Any]:
+        """
+        Obtiene métricas de salud del procesamiento.
+
+        Returns:
+            Dict[str, Any]: Métricas de salud del procesamiento
+                "videos_processing": int,
+                "avg_processing_time": float,
+                "success_rate": float,
+                "bottleneck_step": str,
+                "oldest_processing_video": datetime
+            }
+
+        Example:
+            health_metrics = await video_repository.get_processing_health()
+            print(f"Videos en procesamiento: {health_metrics['videos_processing']}")
         """
         pass
